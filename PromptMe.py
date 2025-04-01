@@ -383,7 +383,9 @@ with tab1:
                 
                 # Display certificate
                 st.subheader("Generated Certificate")
-                st.markdown(f'<div class="certificate-container">{certificate_text}</div>', unsafe_allow_html=True)
+                st.markdown('<div class="certificate-container">', unsafe_allow_html=True)
+                st.write(certificate_text)
+                st.markdown('</div>', unsafe_allow_html=True)
                 
                 # Create download links
                 filename, b64, whatsapp_text, email_subject, email_body = get_download_link(certificate_text, name)
@@ -399,16 +401,14 @@ with tab1:
                     )
                 
                 with col2:
-                    st.markdown(
-                        f'<a href="https://wa.me/?text={whatsapp_text}" target="_blank" class="stButton"><button style="background-color: #25D366; color: white;">📱 Open in WhatsApp</button></a>',
-                        unsafe_allow_html=True
-                    )
+                    # Create a WhatsApp link
+                    whatsapp_url = f"https://wa.me/?text={whatsapp_text}"
+                    st.markdown(f"[📱 Open in WhatsApp]({whatsapp_url})", unsafe_allow_html=True)
                 
                 with col3:
-                    st.markdown(
-                        f'<a href="mailto:?subject={email_subject}&body={email_body}" class="stButton"><button style="background-color: #0078D4; color: white;">📧 Send via Email</button></a>',
-                        unsafe_allow_html=True
-                    )
+                    # Create an email link
+                    email_url = f"mailto:?subject={email_subject}&body={email_body}"
+                    st.markdown(f"[📧 Send via Email]({email_url})", unsafe_allow_html=True)
     
     # Regenerate certificate logic
     if regenerate_button and st.session_state.api_key_set:
@@ -424,7 +424,9 @@ with tab1:
                 
                 # Display certificate
                 st.subheader("Regenerated Certificate")
-                st.markdown(f'<div class="certificate-container">{certificate_text}</div>', unsafe_allow_html=True)
+                st.markdown('<div class="certificate-container">', unsafe_allow_html=True)
+                st.write(certificate_text)
+                st.markdown('</div>', unsafe_allow_html=True)
                 
                 # Create download links
                 name = st.session_state.last_certificate_data['participant_data']['name']
@@ -642,7 +644,9 @@ with tab3:
                     if all_certificates:
                         st.subheader("Sample Certificate")
                         st.write(f"**{all_certificates[0]['name']}**")
-                        st.markdown(f'<div class="certificate-container">{all_certificates[0]["certificate"]}</div>', unsafe_allow_html=True)
+                        st.markdown('<div class="certificate-container">', unsafe_allow_html=True)
+                        st.write(all_certificates[0]["certificate"])
+                        st.markdown('</div>', unsafe_allow_html=True)
         except Exception as e:
             st.error(f"Error processing batch: {str(e)}")
     elif not st.session_state.api_key_set and uploaded_file is not None:
