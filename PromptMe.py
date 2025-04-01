@@ -1,3 +1,328 @@
+def on_regenerate_button_clicked(b):
+        with output:
+            output.clear_output()
+            print("Regenerating certificate with the same data but potentially different wording...")
+
+            if last_certificate_data['participant_data'] is None:
+                print("Error: No previous certificate data found")
+                return
+
+            # Get the prompt template and system instruction
+            template = prompt_template_widget.value
+            system = system_instruction_widget.value
+
+            # Generate a new certificate with the same data
+            certificate_text = generate_certificate(
+                last_certificate_data['participant_data'],
+                prompt_template=template,
+                system_instruction=system
+            )
+
+            # Update the stored certificate
+            last_certificate_data['certificate_text'] = certificate_text
+
+            # Display the certificate
+            print("\n----- Regenerated Certificate -----\n")
+            print(certificate_text)
+            print("\n---------------------------------\n")
+
+            # Create text file download link
+            text_b64 = base64.b64encode(certificate_text.encode()).decode()
+            name = last_certificate_data['participant_data']['name']
+            text_filename = f"certificate_{name.replace(' ', '_')}_regenerated.txt"
+
+            # WhatsApp-ready format
+            whatsapp_text = certificate_text.replace('\n', '%0A')
+
+            # Email-ready format
+            email_subject = f"Certificate of Completion for {name}"
+            email_body = certificate_text.replace('\n', '%0D%0A')
+
+            # Create fancy download links
+            fancy_links = f"""
+            <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px;">
+                <a download="{text_filename}" href="data:text/plain;base64,{text_b64}"
+                   style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none;
+                          border-radius: 4px; display: inline-flex; align-items: center;">
+                   <span style="margin-right: 5px;">📄</span> Download as Text
+                </a>
+
+                <a href="https://wa.me/?text={whatsapp_text}" target="_blank"
+                   style="background-color: #25D366; color: white; padding: 10px 15px; text-decoration: none;
+                          border-radius: 4px; display: inline-flex; align-items: center;">
+                   <span style="margin-right: 5px;">📱</span> Open in WhatsApp
+                </a>
+
+                <a href="mailto:?subject={email_subject}&body={email_body}"
+                   style="background-color: #0078D4; color: white; padding: 10px 15px; text-decoration: none;
+                          border-radius: 4px; display: inline-flex; align-items: center;">
+                   <span style="margin-right: 5px;">📧</span> Send via Email
+                </a>
+
+                <button onclick="navigator.clipboard.writeText(`{certificate_text}`); alert('Certificate copied to clipboard!');"
+                        style="background-color: #6c757d; color: white; padding: 10px 15px; border: none;
+                               border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center;">
+                   <span style="margin-right: 5px;">📋</span> Copy to Clipboard
+                </button>
+            </div>
+            """
+
+            display(HTML(fancy_links))
+
+    button.on_click(on_button_clicked)
+    regenerate_button.on_click(on_regenerate_button_clicked)
+
+    # Create form output
+    form_output = widgets.Output()
+
+    with form_output:
+        # Display widgets
+        display(widgets.HTML("<h2>Certificate Generator</h2>"))
+        display(widgets.HTML("<p>Enter participant information to generate a personalized certificate.</p>"))
+        display(load_sample_button)
+        display(widgets.HTML("<h3>Participant Information</h3>"))
+        display(name_widget)
+        display(gender_widget)
+        display(date_widget)
+        display(strengths_widget)
+        display(goals_widget)
+        display(myom_status_widget)
+        display(learning_impact_widget)
+        display(custom_impact_widget)
+        display(widgets.HBox([button, regenerate_button]))
+        display(output)
+
+    return form_output
+
+# Create batch processing interface
+def create_batch_processing_interface(template_name_widget, prompt_template_widget, system_instruction_widget):
+    batch_output = widgets.Output()
+
+    with batch_output:
+        display(widgets.HTML("<h2>Batch Certificate Generation</h2>"))
+        display(widgets.HTML("<p>Upload a CSV file with participant data to generate multiple certificates at once.</p>"))
+
+        upload_button = widgets.Button(
+            description='Upload CSV File',
+            button_style='primary',
+            layout=widgets.Layout(width='50%')
+        )
+
+        batch_progress = widgets.IntProgress(
+            value=0,
+            min=0,
+            max=100,
+            description='Progress:',
+            bar_style='info',
+            style={'bar_color': '#2196F3'},
+            orientation='horizontal'
+        )
+
+        batch_status = widgets.HTML("")
+        batch_results = widgets.Output()
+
+        def on_upload_button_clicked(b):
+            with batch_results:
+                batch_results.clear_output()
+                batch_progress.value = 0
+                batch_status.value = '<div style="padding: 10px; background-color: #f8f9fa; border-left: 5px solid #2196F3;">Please select a CSV file to upload...</div>'
+
+                try:
+                    uploaded = files.upload()
+
+                    if not uploaded:
+                        batch_status.value = '<div style="padding: 10px; background-color: #fff3cd; border-left: 5px solid #ffc107;">No file selected. Please try again.</div>'
+                        return
+
+                    file_name = list(uploaded.keys())[0]
+                    content = uploaded[file_name]
+
+                    # Parse CSV
+                    csv_data = []
+                    csv_file = io.StringIO(content.decode('utf-8'))
+                    reader = csv.DictReader(csv_file)
+                    field_names = reader.fieldnames
+
+                    required_fields = ['name', 'gender', 'completion_date', 'strengths', 'goals', 'myom_status', 'learning_impact']
+                    missing_fields = [field for field in required_fields if field not in field_names]
+
+                    if missing_fields:
+                        batch_status.value = f'<div style="padding: 10px; background-color: #f8d7da; border-left: 5px solid #dc3545;">Error: Missing required columns in CSV: {", ".join(missing_fields)}</div>'
+                        return
+
+                    # First pass to count rows
+                    csv_file.seek(0)
+                    next(reader)  # Skip header
+                    for row in reader:
+                        csv_data.append(row)
+
+                    total_rows = len(csv_data)
+                    batch_status.value = f'<div style="padding: 10px; background-color: #d1ecf1; border-left: 5px solid #17a2b8;">Processing {total_rows} certificates...</div>'
+                    batch_progress.max = total_rows
+
+                    # Get prompt template and system instruction
+                    template = prompt_template_widget.value
+                    system = system_instruction_widget.value
+
+                    # Process each row
+                    all_certificates = []
+                    errors = []
+
+                    for i, participant in enumerate(csv_data):
+                        try:
+                            # Generate certificate
+                            certificate = generate_certificate(participant, prompt_template=template, system_instruction=system)
+
+                            # Store certificate
+                            all_certificates.append({
+                                'name': participant.get('name', 'Unknown'),
+                                'certificate': certificate
+                            })
+
+                            # Update progress
+                            batch_progress.value = i + 1
+                            batch_status.value = f'<div style="padding: 10px; background-color: #d1ecf1; border-left: 5px solid #17a2b8;">Generating certificate {i+1}/{total_rows} for {participant.get("name", "Unknown")}...</div>'
+                        except Exception as e:
+                            errors.append(f"Error processing row {i+1} ({participant.get('name', 'Unknown')}): {str(e)}")
+
+                    # Create combined text file with all certificates
+                    combined_text = "\n\n" + "="*50 + "\n\n".join([f"CERTIFICATE FOR: {cert['name']}\n\n{cert['certificate']}" for cert in all_certificates])
+
+                    # Create download link
+                    b64 = base64.b64encode(combined_text.encode()).decode()
+                    filename = "all_certificates.txt"
+
+                    # Create Excel/CSV outputs
+                    result_rows = []
+                    for cert in all_certificates:
+                        result_rows.append({
+                            "Name": cert['name'],
+                            "Certificate": cert['certificate']
+                        })
+
+                    result_df = pd.DataFrame(result_rows)
+
+                    # CSV download
+                    csv_data = result_df.to_csv(index=False)
+                    csv_b64 = base64.b64encode(csv_data.encode()).decode()
+
+                    # Update status
+                    if errors:
+                        error_text = "<br>".join(errors)
+                        batch_status.value = f'<div style="padding: 10px; background-color: #fff3cd; border-left: 5px solid #ffc107;">Completed with {len(errors)} errors:<br>{error_text}</div>'
+                    else:
+                        batch_status.value = f'<div style="padding: 10px; background-color: #d4edda; border-left: 5px solid #28a745;">Successfully generated {len(all_certificates)} certificates!</div>'
+
+                    # Display download links
+                    download_links = f"""
+                    <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px;">
+                        <a download="all_certificates.txt" href="data:text/plain;base64,{b64}"
+                           style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none;
+                                  border-radius: 4px; display: inline-flex; align-items: center;">
+                           <span style="margin-right: 5px;">📄</span> Download All as Text
+                        </a>
+
+                        <a download="all_certificates.csv" href="data:text/csv;base64,{csv_b64}"
+                           style="background-color: #FFC107; color: white; padding: 10px 15px; text-decoration: none;
+                                  border-radius: 4px; display: inline-flex; align-items: center;">
+                           <span style="margin-right: 5px;">📊</span> Download Results as CSV
+                        </a>
+                    </div>
+                    """
+
+                    display(HTML(download_links))
+
+                    # Show sample certificates
+                    if all_certificates:
+                        display(widgets.HTML("<h3>Sample Certificate</h3>"))
+                        display(widgets.HTML(f"<p><strong>{all_certificates[0]['name']}</strong></p>"))
+                        display(widgets.HTML(f"<p style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; font-family: Arial;'>{all_certificates[0]['certificate'].replace(chr(10), '<br>')}</p>"))
+
+                except Exception as e:
+                    batch_status.value = f'<div style="padding: 10px; background-color: #f8d7da; border-left: 5px solid #dc3545;">Error processing batch: {str(e)}</div>'
+
+        upload_button.on_click(on_upload_button_clicked)
+
+        # Display batch processing UI
+        display(upload_button)
+        display(batch_progress)
+        display(batch_status)
+        display(batch_results)
+
+        # Show CSV format example
+        csv_example = """name,gender,completion_date,strengths,goals,myom_status,learning_impact
+Thabo Mokoena,Male,15 March 2025,"Communication skills, adaptability, creative problem-solving","Start a small business selling handcrafted items, save money for further education","I have made money for myself before, but I don't do it all the time","The program helped me understand how to price my products and manage my time between my job and side hustle"
+Nomsa Dlamini,Female,16 March 2025,"Organization, attention to detail, team coordination","Find employment in administration, start a small catering business on weekends","I've thought about making money for myself, but I've never actually done so","I learned some useful things that I'm starting to apply"
+"""
+
+        display(widgets.HTML("<h3>CSV Format Example:</h3>"))
+        display(widgets.HTML(f"""
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre; overflow-x: auto;">
+        {csv_example}
+        </div>
+        """))
+
+    return batch_output
+
+# Main application assembly
+def main():
+    # Add styling
+    display(HTML("""
+    <style>
+        .tab-content {
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 .25rem .25rem;
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .widget-label {
+            min-width: 150px;
+        }
+        .jupyter-widgets-output-area .output_subarea {
+            max-width: 100%;
+        }
+    </style>
+    """))
+
+    # Title and intro
+    display(HTML("""
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h1 style="color: #009245; margin-bottom: 0.5rem;">CoachMee Certificate Generator</h1>
+        <p style="font-size: 1.2rem; color: #555;">Generate personalized completion letters for participants in the Make Your Own Money (MYOM) WhatsApp learning journey</p>
+    </div>
+    """))
+
+    # Create prompt engineering interface
+    prompt_interface, template_name_widget, prompt_template_widget, system_instruction_widget = create_prompt_engineering_interface()
+
+    # Create certificate form
+    form_interface = create_certificate_form(template_name_widget, prompt_template_widget, system_instruction_widget)
+
+    # Create batch processing interface
+    batch_interface = create_batch_processing_interface(template_name_widget, prompt_template_widget, system_instruction_widget)
+
+    # Create tabs
+    tab = widgets.Tab(children=[form_interface, prompt_interface, batch_interface])
+    tab.set_title(0, 'Generate Certificate')
+    tab.set_title(1, 'Prompt Engineering')
+    tab.set_title(2, 'Batch Processing')
+
+    display(tab)
+
+    # Footer
+    display(HTML("""
+    <div style="margin-top: 2rem; text-align: center; border-top: 1px solid #eee; padding-top: 1rem;">
+        <p>CoachMee Certificate Generator v1.0 | Harambee Youth Employment Accelerator | © 2025</p>
+    </div>
+    """))
+
+# Run the application
+main()# Import required libraries
 import pandas as pd
 import google.generativeai as genai
 import ipywidgets as widgets
@@ -46,8 +371,6 @@ display(widgets.HTML("<h2>Google API Authentication</h2>"))
 display(widgets.HTML("<p>Enter your Google API key to use the Gemini API:</p>"))
 display(widgets.HBox([api_key_input, api_key_button]))
 display(api_key_status)
-
-
 
 # Prompt Templates with System Instructions
 DEFAULT_PROMPT_TEMPLATE = """
@@ -171,8 +494,6 @@ def generate_certificate(participant_data, prompt_template=None, system_instruct
 
         # Create a properly formatted prompt that includes system instruction
         full_prompt = f"{system_instruction}\n\n{formatted_prompt}"
-
-
 
         # Generate content
         response = model.generate_content(
@@ -570,329 +891,3 @@ def create_certificate_form(template_name_widget, prompt_template_widget, system
 
             # Enable regenerate button
             regenerate_button.disabled = False
-
-    def on_regenerate_button_clicked(b):
-        with output:
-            output.clear_output()
-            print("Regenerating certificate with the same data but potentially different wording...")
-
-            if last_certificate_data['participant_data'] is None:
-                print("Error: No previous certificate data found")
-                return
-
-            # Get the prompt template and system instruction
-            template = prompt_template_widget.value
-            system = system_instruction_widget.value
-
-            # Generate a new certificate with the same data
-            certificate_text = generate_certificate(
-                last_certificate_data['participant_data'],
-                prompt_template=template,
-                system_instruction=system
-            )
-
-            # Update the stored certificate
-            last_certificate_data['certificate_text'] = certificate_text
-
-            # Display the certificate
-            print("\n----- Regenerated Certificate -----\n")
-            print(certificate_text)
-            print("\n---------------------------------\n")
-
-            # Create text file download link
-            text_b64 = base64.b64encode(certificate_text.encode()).decode()
-            name = last_certificate_data['participant_data']['name']
-            text_filename = f"certificate_{name.replace(' ', '_')}_regenerated.txt"
-
-            # WhatsApp-ready format
-            whatsapp_text = certificate_text.replace('\n', '%0A')
-
-            # Email-ready format
-            email_subject = f"Certificate of Completion for {name}"
-            email_body = certificate_text.replace('\n', '%0D%0A')
-
-            # Create fancy download links (same as above)
-            fancy_links = f"""
-            <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px;">
-                <a download="{text_filename}" href="data:text/plain;base64,{text_b64}"
-                   style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none;
-                          border-radius: 4px; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📄</span> Download as Text
-                </a>
-
-                <a href="https://wa.me/?text={whatsapp_text}" target="_blank"
-                   style="background-color: #25D366; color: white; padding: 10px 15px; text-decoration: none;
-                          border-radius: 4px; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📱</span> Open in WhatsApp
-                </a>
-
-                <a href="mailto:?subject={email_subject}&body={email_body}"
-                   style="background-color: #0078D4; color: white; padding: 10px 15px; text-decoration: none;
-                          border-radius: 4px; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📧</span> Send via Email
-                </a>
-
-                <button onclick="navigator.clipboard.writeText(`{certificate_text}`); alert('Certificate copied to clipboard!');"
-                        style="background-color: #6c757d; color: white; padding: 10px 15px; border: none;
-                               border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📋</span> Copy to Clipboard
-                </button>
-            </div>
-            """
-
-            display(HTML(fancy_links))
-
-    button.on_click(on_button_clicked)
-    regenerate_button.on_click(on_regenerate_button_clicked)
-
-    # Create form output
-    form_output = widgets.Output()
-
-    with form_output:
-        # Display widgets
-        display(widgets.HTML("<h2>Certificate Generator</h2>"))
-        display(widgets.HTML("<p>Enter participant information to generate a personalized certificate.</p>"))
-        display(load_sample_button)
-        display(widgets.HTML("<h3>Participant Information</h3>"))
-        display(name_widget)
-        display(gender_widget)
-        display(date_widget)
-        display(strengths_widget)
-        display(goals_widget)
-        display(myom_status_widget)
-        display(learning_impact_widget)
-        display(custom_impact_widget)
-        display(widgets.HBox([button, regenerate_button]))
-        display(output)
-
-    return form_output
-
-# Create batch processing interface
-def create_batch_processing_interface(template_name_widget, prompt_template_widget, system_instruction_widget):
-    batch_output = widgets.Output()
-
-    with batch_output:
-        display(widgets.HTML("<h2>Batch Certificate Generation</h2>"))
-        display(widgets.HTML("<p>Upload a CSV file with participant data to generate multiple certificates at once.</p>"))
-
-        upload_button = widgets.Button(
-            description='Upload CSV File',
-            button_style='primary',
-            layout=widgets.Layout(width='50%')
-        )
-
-        batch_progress = widgets.IntProgress(
-            value=0,
-            min=0,
-            max=100,
-            description='Progress:',
-            bar_style='info',
-            style={'bar_color': '#2196F3'},
-            orientation='horizontal'
-        )
-
-        batch_status = widgets.HTML("")
-        batch_results = widgets.Output()
-
-        def on_upload_button_clicked(b):
-            with batch_results:
-                batch_results.clear_output()
-                batch_progress.value = 0
-                batch_status.value = '<div style="padding: 10px; background-color: #f8f9fa; border-left: 5px solid #2196F3;">Please select a CSV file to upload...</div>'
-
-                try:
-                    uploaded = files.upload()
-
-                    if not uploaded:
-                        batch_status.value = '<div style="padding: 10px; background-color: #fff3cd; border-left: 5px solid #ffc107;">No file selected. Please try again.</div>'
-                        return
-
-                    file_name = list(uploaded.keys())[0]
-                    content = uploaded[file_name]
-
-                    # Parse CSV
-                    csv_data = []
-                    csv_file = io.StringIO(content.decode('utf-8'))
-                    reader = csv.DictReader(csv_file)
-                    field_names = reader.fieldnames
-
-                    required_fields = ['name', 'gender', 'completion_date', 'strengths', 'goals', 'myom_status', 'learning_impact']
-                    missing_fields = [field for field in required_fields if field not in field_names]
-
-                    if missing_fields:
-                        batch_status.value = f'<div style="padding: 10px; background-color: #f8d7da; border-left: 5px solid #dc3545;">Error: Missing required columns in CSV: {", ".join(missing_fields)}</div>'
-                        return
-
-                    # First pass to count rows
-                    csv_file.seek(0)
-                    next(reader)  # Skip header
-                    for row in reader:
-                        csv_data.append(row)
-
-                    total_rows = len(csv_data)
-                    batch_status.value = f'<div style="padding: 10px; background-color: #d1ecf1; border-left: 5px solid #17a2b8;">Processing {total_rows} certificates...</div>'
-                    batch_progress.max = total_rows
-
-                    # Get prompt template and system instruction
-                    template = prompt_template_widget.value
-                    system = system_instruction_widget.value
-
-                    # Process each row
-                    all_certificates = []
-                    errors = []
-
-                    for i, participant in enumerate(csv_data):
-                        try:
-                            # Generate certificate
-                            certificate = generate_certificate(participant, prompt_template=template, system_instruction=system)
-
-                            # Store certificate
-                            all_certificates.append({
-                                'name': participant.get('name', 'Unknown'),
-                                'certificate': certificate
-                            })
-
-                            # Update progress
-                            batch_progress.value = i + 1
-                            batch_status.value = f'<div style="padding: 10px; background-color: #d1ecf1; border-left: 5px solid #17a2b8;">Generating certificate {i+1}/{total_rows} for {participant.get("name", "Unknown")}...</div>'
-                        except Exception as e:
-                            errors.append(f"Error processing row {i+1} ({participant.get('name', 'Unknown')}): {str(e)}")
-
-                    # Create combined text file with all certificates
-                    combined_text = "\n\n" + "="*50 + "\n\n".join([f"CERTIFICATE FOR: {cert['name']}\n\n{cert['certificate']}" for cert in all_certificates])
-
-                    # Create download link
-                    b64 = base64.b64encode(combined_text.encode()).decode()
-                    filename = "all_certificates.txt"
-
-                    # Create Excel/CSV outputs
-                    result_rows = []
-                    for cert in all_certificates:
-                        result_rows.append({
-                            "Name": cert['name'],
-                            "Certificate": cert['certificate']
-                        })
-
-                    result_df = pd.DataFrame(result_rows)
-
-                    # CSV download
-                    csv_data = result_df.to_csv(index=False)
-                    csv_b64 = base64.b64encode(csv_data.encode()).decode()
-
-                    # Update status
-                    if errors:
-                        error_text = "<br>".join(errors)
-                        batch_status.value = f'<div style="padding: 10px; background-color: #fff3cd; border-left: 5px solid #ffc107;">Completed with {len(errors)} errors:<br>{error_text}</div>'
-                    else:
-                        batch_status.value = f'<div style="padding: 10px; background-color: #d4edda; border-left: 5px solid #28a745;">Successfully generated {len(all_certificates)} certificates!</div>'
-
-                    # Display download links
-                    download_links = f"""
-                    <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px;">
-                        <a download="all_certificates.txt" href="data:text/plain;base64,{b64}"
-                           style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none;
-                                  border-radius: 4px; display: inline-flex; align-items: center;">
-                           <span style="margin-right: 5px;">📄</span> Download All as Text
-                        </a>
-
-                        <a download="all_certificates.csv" href="data:text/csv;base64,{csv_b64}"
-                           style="background-color: #FFC107; color: white; padding: 10px 15px; text-decoration: none;
-                                  border-radius: 4px; display: inline-flex; align-items: center;">
-                           <span style="margin-right: 5px;">📊</span> Download Results as CSV
-                        </a>
-                    </div>
-                    """
-
-                    display(HTML(download_links))
-
-                    # Show sample certificates
-                    if all_certificates:
-                        display(widgets.HTML("<h3>Sample Certificate</h3>"))
-                        display(widgets.HTML(f"<p><strong>{all_certificates[0]['name']}</strong></p>"))
-                        display(widgets.HTML(f"<p style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; font-family: Arial;'>{all_certificates[0]['certificate'].replace(chr(10), '<br>')}</p>"))
-
-                except Exception as e:
-                    batch_status.value = f'<div style="padding: 10px; background-color: #f8d7da; border-left: 5px solid #dc3545;">Error processing batch: {str(e)}</div>'
-
-        upload_button.on_click(on_upload_button_clicked)
-
-        # Display batch processing UI
-        display(upload_button)
-        display(batch_progress)
-        display(batch_status)
-        display(batch_results)
-
-        # Show CSV format example
-        csv_example = """name,gender,completion_date,strengths,goals,myom_status,learning_impact
-Thabo Mokoena,Male,15 March 2025,"Communication skills, adaptability, creative problem-solving","Start a small business selling handcrafted items, save money for further education","I have made money for myself before, but I don't do it all the time","The program helped me understand how to price my products and manage my time between my job and side hustle"
-Nomsa Dlamini,Female,16 March 2025,"Organization, attention to detail, team coordination","Find employment in administration, start a small catering business on weekends","I've thought about making money for myself, but I've never actually done so","I learned some useful things that I'm starting to apply"
-"""
-
-        display(widgets.HTML("<h3>CSV Format Example:</h3>"))
-        display(widgets.HTML(f"""
-        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre; overflow-x: auto;">
-        {csv_example}
-        </div>
-        """))
-
-    return batch_output
-
-# Main application assembly
-def main():
-    # Add styling
-    display(HTML("""
-    <style>
-        .tab-content {
-            padding: 20px;
-            border: 1px solid #dee2e6;
-            border-top: none;
-            border-radius: 0 0 .25rem .25rem;
-        }
-        h1, h2, h3, h4 {
-            color: #2c3e50;
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
-        }
-        .widget-label {
-            min-width: 150px;
-        }
-        .jupyter-widgets-output-area .output_subarea {
-            max-width: 100%;
-        }
-    </style>
-    """))
-
-    # Title and intro
-    display(HTML("""
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <h1 style="color: #009245; margin-bottom: 0.5rem;">CoachMee Certificate Generator</h1>
-        <p style="font-size: 1.2rem; color: #555;">Generate personalized completion letters for participants in the Make Your Own Money (MYOM) WhatsApp learning journey</p>
-    </div>
-    """))
-
-    # Create prompt engineering interface
-    prompt_interface, template_name_widget, prompt_template_widget, system_instruction_widget = create_prompt_engineering_interface()
-
-    # Create certificate form
-    form_interface = create_certificate_form(template_name_widget, prompt_template_widget, system_instruction_widget)
-
-    # Create batch processing interface
-    batch_interface = create_batch_processing_interface(template_name_widget, prompt_template_widget, system_instruction_widget)
-
-    # Create tabs
-    tab = widgets.Tab(children=[form_interface, prompt_interface, batch_interface])
-    tab.set_title(0, 'Generate Certificate')
-    tab.set_title(1, 'Prompt Engineering')
-    tab.set_title(2, 'Batch Processing')
-
-    display(tab)
-
-    # Footer
-    display(HTML("""
-    <div style="margin-top: 2rem; text-align: center; border-top: 1px solid #eee; padding-top: 1rem;">
-        <p>CoachMee Certificate Generator v1.0 | Harambee Youth Employment Accelerator | © 2025</p>
-    </div>
-    """))
-
-# Run the application
-main()
