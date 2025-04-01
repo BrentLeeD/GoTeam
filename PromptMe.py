@@ -7,6 +7,7 @@ import io
 import csv
 import json
 import os
+import pyperclip  # For clipboard functionality
 
 # Page configuration
 st.set_page_config(
@@ -229,11 +230,30 @@ def get_download_link(certificate_text, name):
     filename = f"certificate_{name.replace(' ', '_')}.txt"
     
     # Format for different platforms
-    whatsapp_text = certificate_text.replace('\n', '%0A')
+    whatsapp_text = certificate_text.replace('\n', '%0A')  # Keep for compatibility
     email_subject = f"Certificate of Completion for {name}"
     email_body = certificate_text.replace('\n', '%0D%0A')
     
     return filename, b64, whatsapp_text, email_subject, email_body
+
+# Function to add a copy to clipboard button that works with Streamlit
+def add_copy_button(certificate_text):
+    """Add a copy to clipboard button for the certificate text."""
+    # Create a button for copying text
+    if st.button("📋 Copy to Clipboard", key="copy_btn", use_container_width=True, 
+                type="secondary"):
+        try:
+            # Try using pyperclip (works in most environments)
+            import pyperclip
+            pyperclip.copy(certificate_text)
+            st.success("Certificate copied to clipboard!")
+        except:
+            # Fallback to displaying text that can be easily copied
+            st.text_area("Copy this text manually:", value=certificate_text, 
+                        height=100, label_visibility="collapsed")
+            st.info("The text has been selected above. Use Ctrl+C (or Cmd+C on Mac) to copy.")
+        
+    return
 
 # Create tabs
 tab1, tab2, tab3 = st.tabs(["Generate Certificate", "Prompt Engineering", "Batch Processing"])
@@ -381,17 +401,17 @@ with tab1:
                 st.session_state.learning_impact_option = learning_impact_option
                 st.session_state.custom_impact = custom_impact
                 
-                # Display certificate
+                # Display certificate with better formatting and id for copy functionality
                 st.subheader("Generated Certificate")
-                st.markdown('<div class="certificate-container">', unsafe_allow_html=True)
-                st.write(certificate_text)
-                st.markdown('</div>', unsafe_allow_html=True)
+                # Replace newlines with <br> tags and wrap in div with id for copying
+                formatted_certificate = certificate_text.replace('\n', '<br>')
+                st.markdown(f'<div class="certificate-container" id="certificate-text">{formatted_certificate}</div>', unsafe_allow_html=True)
                 
                 # Create download links
                 filename, b64, whatsapp_text, email_subject, email_body = get_download_link(certificate_text, name)
                 
-                # Add download buttons
-                col1, col2, col3 = st.columns(3)
+                # Add download and email buttons (WhatsApp removed as requested)
+                col1, col2 = st.columns(2)
                 with col1:
                     st.download_button(
                         label="📄 Download as Text",
@@ -401,14 +421,13 @@ with tab1:
                     )
                 
                 with col2:
-                    # Create a WhatsApp link
-                    whatsapp_url = f"https://wa.me/?text={whatsapp_text}"
-                    st.markdown(f"[📱 Open in WhatsApp]({whatsapp_url})", unsafe_allow_html=True)
+                    st.markdown(
+                        f'<a href="mailto:?subject={email_subject}&body={email_body}" class="stButton"><button style="background-color: #0078D4; color: white;">📧 Send via Email</button></a>',
+                        unsafe_allow_html=True
+                    )
                 
-                with col3:
-                    # Create an email link
-                    email_url = f"mailto:?subject={email_subject}&body={email_body}"
-                    st.markdown(f"[📧 Send via Email]({email_url})", unsafe_allow_html=True)
+                # Add a proper Streamlit copy button
+                add_copy_button(certificate_text)
     
     # Regenerate certificate logic
     if regenerate_button and st.session_state.api_key_set:
@@ -422,18 +441,18 @@ with tab1:
                 # Update the stored certificate
                 st.session_state.last_certificate_data['certificate_text'] = certificate_text
                 
-                # Display certificate
+                # Display regenerated certificate with better formatting
                 st.subheader("Regenerated Certificate")
-                st.markdown('<div class="certificate-container">', unsafe_allow_html=True)
-                st.write(certificate_text)
-                st.markdown('</div>', unsafe_allow_html=True)
+                # Replace newlines with <br> tags and wrap in div with id for copying
+                formatted_certificate = certificate_text.replace('\n', '<br>')
+                st.markdown(f'<div class="certificate-container" id="certificate-text">{formatted_certificate}</div>', unsafe_allow_html=True)
                 
                 # Create download links
                 name = st.session_state.last_certificate_data['participant_data']['name']
                 filename, b64, whatsapp_text, email_subject, email_body = get_download_link(certificate_text, name)
                 
-                # Add download buttons
-                col1, col2, col3 = st.columns(3)
+                # Add download and email buttons (WhatsApp removed as requested)
+                col1, col2 = st.columns(2)
                 with col1:
                     st.download_button(
                         label="📄 Download as Text",
@@ -444,15 +463,12 @@ with tab1:
                 
                 with col2:
                     st.markdown(
-                        f'<a href="https://wa.me/?text={whatsapp_text}" target="_blank" class="stButton"><button style="background-color: #25D366; color: white;">📱 Open in WhatsApp</button></a>',
-                        unsafe_allow_html=True
-                    )
-                
-                with col3:
-                    st.markdown(
                         f'<a href="mailto:?subject={email_subject}&body={email_body}" class="stButton"><button style="background-color: #0078D4; color: white;">📧 Send via Email</button></a>',
                         unsafe_allow_html=True
                     )
+                
+                # Add a proper Streamlit copy button
+                add_copy_button(certificate_text)
 
 # Tab 2: Prompt Engineering
 with tab2:
@@ -644,9 +660,7 @@ with tab3:
                     if all_certificates:
                         st.subheader("Sample Certificate")
                         st.write(f"**{all_certificates[0]['name']}**")
-                        st.markdown('<div class="certificate-container">', unsafe_allow_html=True)
-                        st.write(all_certificates[0]["certificate"])
-                        st.markdown('</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="certificate-container">{all_certificates[0]["certificate"]}</div>', unsafe_allow_html=True)
         except Exception as e:
             st.error(f"Error processing batch: {str(e)}")
     elif not st.session_state.api_key_set and uploaded_file is not None:
