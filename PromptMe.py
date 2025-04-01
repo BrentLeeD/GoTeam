@@ -1,7 +1,3 @@
-# Install required packages
-!pip install google-generativeai pandas ipywidgets google-auth google-auth-oauthlib google-auth-httplib2
-
-# Import required libraries
 import pandas as pd
 import google.generativeai as genai
 import ipywidgets as widgets
