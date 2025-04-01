@@ -1,376 +1,91 @@
-def on_regenerate_button_clicked(b):
-        with output:
-            output.clear_output()
-            print("Regenerating certificate with the same data but potentially different wording...")
-
-            if last_certificate_data['participant_data'] is None:
-                print("Error: No previous certificate data found")
-                return
-
-            # Get the prompt template and system instruction
-            template = prompt_template_widget.value
-            system = system_instruction_widget.value
-
-            # Generate a new certificate with the same data
-            certificate_text = generate_certificate(
-                last_certificate_data['participant_data'],
-                prompt_template=template,
-                system_instruction=system
-            )
-
-            # Update the stored certificate
-            last_certificate_data['certificate_text'] = certificate_text
-
-            # Display the certificate
-            print("\n----- Regenerated Certificate -----\n")
-            print(certificate_text)
-            print("\n---------------------------------\n")
-
-            # Create text file download link
-            text_b64 = base64.b64encode(certificate_text.encode()).decode()
-            name = last_certificate_data['participant_data']['name']
-            text_filename = f"certificate_{name.replace(' ', '_')}_regenerated.txt"
-
-            # WhatsApp-ready format
-            whatsapp_text = certificate_text.replace('\n', '%0A')
-
-            # Email-ready format
-            email_subject = f"Certificate of Completion for {name}"
-            email_body = certificate_text.replace('\n', '%0D%0A')
-
-            # Create fancy download links
-            fancy_links = f"""
-            <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px;">
-                <a download="{text_filename}" href="data:text/plain;base64,{text_b64}"
-                   style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none;
-                          border-radius: 4px; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📄</span> Download as Text
-                </a>
-
-                <a href="https://wa.me/?text={whatsapp_text}" target="_blank"
-                   style="background-color: #25D366; color: white; padding: 10px 15px; text-decoration: none;
-                          border-radius: 4px; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📱</span> Open in WhatsApp
-                </a>
-
-                <a href="mailto:?subject={email_subject}&body={email_body}"
-                   style="background-color: #0078D4; color: white; padding: 10px 15px; text-decoration: none;
-                          border-radius: 4px; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📧</span> Send via Email
-                </a>
-
-                <button onclick="navigator.clipboard.writeText(`{certificate_text}`); alert('Certificate copied to clipboard!');"
-                        style="background-color: #6c757d; color: white; padding: 10px 15px; border: none;
-                               border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📋</span> Copy to Clipboard
-                </button>
-            </div>
-            """
-
-            display(HTML(fancy_links))
-
-    button.on_click(on_button_clicked)
-    regenerate_button.on_click(on_regenerate_button_clicked)
-
-    # Create form output
-    form_output = widgets.Output()
-
-    with form_output:
-        # Display widgets
-        display(widgets.HTML("<h2>Certificate Generator</h2>"))
-        display(widgets.HTML("<p>Enter participant information to generate a personalized certificate.</p>"))
-        display(load_sample_button)
-        display(widgets.HTML("<h3>Participant Information</h3>"))
-        display(name_widget)
-        display(gender_widget)
-        display(date_widget)
-        display(strengths_widget)
-        display(goals_widget)
-        display(myom_status_widget)
-        display(learning_impact_widget)
-        display(custom_impact_widget)
-        display(widgets.HBox([button, regenerate_button]))
-        display(output)
-
-    return form_output
-
-# Create batch processing interface
-def create_batch_processing_interface(template_name_widget, prompt_template_widget, system_instruction_widget):
-    batch_output = widgets.Output()
-
-    with batch_output:
-        display(widgets.HTML("<h2>Batch Certificate Generation</h2>"))
-        display(widgets.HTML("<p>Upload a CSV file with participant data to generate multiple certificates at once.</p>"))
-
-        upload_button = widgets.Button(
-            description='Upload CSV File',
-            button_style='primary',
-            layout=widgets.Layout(width='50%')
-        )
-
-        batch_progress = widgets.IntProgress(
-            value=0,
-            min=0,
-            max=100,
-            description='Progress:',
-            bar_style='info',
-            style={'bar_color': '#2196F3'},
-            orientation='horizontal'
-        )
-
-        batch_status = widgets.HTML("")
-        batch_results = widgets.Output()
-
-        def on_upload_button_clicked(b):
-            with batch_results:
-                batch_results.clear_output()
-                batch_progress.value = 0
-                batch_status.value = '<div style="padding: 10px; background-color: #f8f9fa; border-left: 5px solid #2196F3;">Please select a CSV file to upload...</div>'
-
-                try:
-                    uploaded = files.upload()
-
-                    if not uploaded:
-                        batch_status.value = '<div style="padding: 10px; background-color: #fff3cd; border-left: 5px solid #ffc107;">No file selected. Please try again.</div>'
-                        return
-
-                    file_name = list(uploaded.keys())[0]
-                    content = uploaded[file_name]
-
-                    # Parse CSV
-                    csv_data = []
-                    csv_file = io.StringIO(content.decode('utf-8'))
-                    reader = csv.DictReader(csv_file)
-                    field_names = reader.fieldnames
-
-                    required_fields = ['name', 'gender', 'completion_date', 'strengths', 'goals', 'myom_status', 'learning_impact']
-                    missing_fields = [field for field in required_fields if field not in field_names]
-
-                    if missing_fields:
-                        batch_status.value = f'<div style="padding: 10px; background-color: #f8d7da; border-left: 5px solid #dc3545;">Error: Missing required columns in CSV: {", ".join(missing_fields)}</div>'
-                        return
-
-                    # First pass to count rows
-                    csv_file.seek(0)
-                    next(reader)  # Skip header
-                    for row in reader:
-                        csv_data.append(row)
-
-                    total_rows = len(csv_data)
-                    batch_status.value = f'<div style="padding: 10px; background-color: #d1ecf1; border-left: 5px solid #17a2b8;">Processing {total_rows} certificates...</div>'
-                    batch_progress.max = total_rows
-
-                    # Get prompt template and system instruction
-                    template = prompt_template_widget.value
-                    system = system_instruction_widget.value
-
-                    # Process each row
-                    all_certificates = []
-                    errors = []
-
-                    for i, participant in enumerate(csv_data):
-                        try:
-                            # Generate certificate
-                            certificate = generate_certificate(participant, prompt_template=template, system_instruction=system)
-
-                            # Store certificate
-                            all_certificates.append({
-                                'name': participant.get('name', 'Unknown'),
-                                'certificate': certificate
-                            })
-
-                            # Update progress
-                            batch_progress.value = i + 1
-                            batch_status.value = f'<div style="padding: 10px; background-color: #d1ecf1; border-left: 5px solid #17a2b8;">Generating certificate {i+1}/{total_rows} for {participant.get("name", "Unknown")}...</div>'
-                        except Exception as e:
-                            errors.append(f"Error processing row {i+1} ({participant.get('name', 'Unknown')}): {str(e)}")
-
-                    # Create combined text file with all certificates
-                    combined_text = "\n\n" + "="*50 + "\n\n".join([f"CERTIFICATE FOR: {cert['name']}\n\n{cert['certificate']}" for cert in all_certificates])
-
-                    # Create download link
-                    b64 = base64.b64encode(combined_text.encode()).decode()
-                    filename = "all_certificates.txt"
-
-                    # Create Excel/CSV outputs
-                    result_rows = []
-                    for cert in all_certificates:
-                        result_rows.append({
-                            "Name": cert['name'],
-                            "Certificate": cert['certificate']
-                        })
-
-                    result_df = pd.DataFrame(result_rows)
-
-                    # CSV download
-                    csv_data = result_df.to_csv(index=False)
-                    csv_b64 = base64.b64encode(csv_data.encode()).decode()
-
-                    # Update status
-                    if errors:
-                        error_text = "<br>".join(errors)
-                        batch_status.value = f'<div style="padding: 10px; background-color: #fff3cd; border-left: 5px solid #ffc107;">Completed with {len(errors)} errors:<br>{error_text}</div>'
-                    else:
-                        batch_status.value = f'<div style="padding: 10px; background-color: #d4edda; border-left: 5px solid #28a745;">Successfully generated {len(all_certificates)} certificates!</div>'
-
-                    # Display download links
-                    download_links = f"""
-                    <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px;">
-                        <a download="all_certificates.txt" href="data:text/plain;base64,{b64}"
-                           style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none;
-                                  border-radius: 4px; display: inline-flex; align-items: center;">
-                           <span style="margin-right: 5px;">📄</span> Download All as Text
-                        </a>
-
-                        <a download="all_certificates.csv" href="data:text/csv;base64,{csv_b64}"
-                           style="background-color: #FFC107; color: white; padding: 10px 15px; text-decoration: none;
-                                  border-radius: 4px; display: inline-flex; align-items: center;">
-                           <span style="margin-right: 5px;">📊</span> Download Results as CSV
-                        </a>
-                    </div>
-                    """
-
-                    display(HTML(download_links))
-
-                    # Show sample certificates
-                    if all_certificates:
-                        display(widgets.HTML("<h3>Sample Certificate</h3>"))
-                        display(widgets.HTML(f"<p><strong>{all_certificates[0]['name']}</strong></p>"))
-                        display(widgets.HTML(f"<p style='background-color: #f8f9fa; padding: 15px; border-radius: 5px; font-family: Arial;'>{all_certificates[0]['certificate'].replace(chr(10), '<br>')}</p>"))
-
-                except Exception as e:
-                    batch_status.value = f'<div style="padding: 10px; background-color: #f8d7da; border-left: 5px solid #dc3545;">Error processing batch: {str(e)}</div>'
-
-        upload_button.on_click(on_upload_button_clicked)
-
-        # Display batch processing UI
-        display(upload_button)
-        display(batch_progress)
-        display(batch_status)
-        display(batch_results)
-
-        # Show CSV format example
-        csv_example = """name,gender,completion_date,strengths,goals,myom_status,learning_impact
-Thabo Mokoena,Male,15 March 2025,"Communication skills, adaptability, creative problem-solving","Start a small business selling handcrafted items, save money for further education","I have made money for myself before, but I don't do it all the time","The program helped me understand how to price my products and manage my time between my job and side hustle"
-Nomsa Dlamini,Female,16 March 2025,"Organization, attention to detail, team coordination","Find employment in administration, start a small catering business on weekends","I've thought about making money for myself, but I've never actually done so","I learned some useful things that I'm starting to apply"
-"""
-
-        display(widgets.HTML("<h3>CSV Format Example:</h3>"))
-        display(widgets.HTML(f"""
-        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre; overflow-x: auto;">
-        {csv_example}
-        </div>
-        """))
-
-    return batch_output
-
-# Main application assembly
-def main():
-    # Add styling
-    display(HTML("""
-    <style>
-        .tab-content {
-            padding: 20px;
-            border: 1px solid #dee2e6;
-            border-top: none;
-            border-radius: 0 0 .25rem .25rem;
-        }
-        h1, h2, h3, h4 {
-            color: #2c3e50;
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
-        }
-        .widget-label {
-            min-width: 150px;
-        }
-        .jupyter-widgets-output-area .output_subarea {
-            max-width: 100%;
-        }
-    </style>
-    """))
-
-    # Title and intro
-    display(HTML("""
-    <div style="text-align: center; margin-bottom: 2rem;">
-        <h1 style="color: #009245; margin-bottom: 0.5rem;">CoachMee Certificate Generator</h1>
-        <p style="font-size: 1.2rem; color: #555;">Generate personalized completion letters for participants in the Make Your Own Money (MYOM) WhatsApp learning journey</p>
-    </div>
-    """))
-
-    # Create prompt engineering interface
-    prompt_interface, template_name_widget, prompt_template_widget, system_instruction_widget = create_prompt_engineering_interface()
-
-    # Create certificate form
-    form_interface = create_certificate_form(template_name_widget, prompt_template_widget, system_instruction_widget)
-
-    # Create batch processing interface
-    batch_interface = create_batch_processing_interface(template_name_widget, prompt_template_widget, system_instruction_widget)
-
-    # Create tabs
-    tab = widgets.Tab(children=[form_interface, prompt_interface, batch_interface])
-    tab.set_title(0, 'Generate Certificate')
-    tab.set_title(1, 'Prompt Engineering')
-    tab.set_title(2, 'Batch Processing')
-
-    display(tab)
-
-    # Footer
-    display(HTML("""
-    <div style="margin-top: 2rem; text-align: center; border-top: 1px solid #eee; padding-top: 1rem;">
-        <p>CoachMee Certificate Generator v1.0 | Harambee Youth Employment Accelerator | © 2025</p>
-    </div>
-    """))
-
-# Run the application
-main()# Import required libraries
+import streamlit as st
 import pandas as pd
 import google.generativeai as genai
-import ipywidgets as widgets
-from IPython.display import display, HTML, Javascript
 from datetime import datetime
 import base64
-import os
-import time
-import json
 import io
 import csv
-from google.colab import files
+import json
+import os
 
-# Manual API key input
-api_key_input = widgets.Password(
-    description='API Key:',
-    placeholder='Enter your Google API key',
-    layout=widgets.Layout(width='50%')
+# Page configuration
+st.set_page_config(
+    page_title="CoachMee Certificate Generator",
+    page_icon="📝",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-api_key_button = widgets.Button(
-    description='Set API Key',
-    button_style='primary',
-    layout=widgets.Layout(width='20%')
-)
+# Custom CSS
+st.markdown("""
+<style>
+    .main .block-container {
+        padding-top: 2rem;
+    }
+    h1, h2, h3, h4 {
+        color: #2c3e50;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 1px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #f8f9fa;
+        border-radius: 4px 4px 0 0;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #009245;
+        color: white;
+    }
+    .download-btn {
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 15px;
+        text-decoration: none;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        margin-right: 10px;
+    }
+    .whatsapp-btn {
+        background-color: #25D366;
+        color: white;
+    }
+    .email-btn {
+        background-color: #0078D4;
+        color: white;
+    }
+    .copy-btn {
+        background-color: #6c757d;
+        color: white;
+    }
+    .certificate-container {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 5px;
+        border-left: 5px solid #009245;
+        margin: 20px 0;
+    }
+    .footer {
+        margin-top: 2rem;
+        text-align: center;
+        border-top: 1px solid #eee;
+        padding-top: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-api_key_status = widgets.HTML("")
-
-# Function to set API key
-def set_api_key(b):
-    key = api_key_input.value
-    if not key:
-        api_key_status.value = '<div style="color: red; padding: 10px;">Please enter an API key</div>'
-        return
-
-    try:
-        # Configure Gemini with the provided API key
-        genai.configure(api_key=key)
-        api_key_status.value = '<div style="color: green; padding: 10px;">API key set successfully! You can now generate certificates.</div>'
-    except Exception as e:
-        api_key_status.value = f'<div style="color: red; padding: 10px;">Error setting API key: {str(e)}</div>'
-
-api_key_button.on_click(set_api_key)
-
-display(widgets.HTML("<h2>Google API Authentication</h2>"))
-display(widgets.HTML("<p>Enter your Google API key to use the Gemini API:</p>"))
-display(widgets.HBox([api_key_input, api_key_button]))
-display(api_key_status)
+# Title and intro
+st.markdown("""
+<div style="text-align: center; margin-bottom: 2rem;">
+    <h1 style="color: #009245; margin-bottom: 0.5rem;">CoachMee Certificate Generator</h1>
+    <p style="font-size: 1.2rem; color: #555;">Generate personalized completion letters for participants in the Make Your Own Money (MYOM) WhatsApp learning journey</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Prompt Templates with System Instructions
 DEFAULT_PROMPT_TEMPLATE = """
@@ -412,51 +127,34 @@ Follow these principles:
 Focus on the entrepreneurial skills and mindset developed through the program, emphasizing how the participant can use these skills to make their own money.
 """
 
-# Save and load prompt templates
-def save_prompt_template(name, template, system_instruction):
-    """Save a prompt template to a JSON file."""
-    prompt_data = {
-        "name": name,
-        "template": template,
-        "system_instruction": system_instruction
+# Initialize session state variables
+if 'last_certificate_data' not in st.session_state:
+    st.session_state.last_certificate_data = {
+        'participant_data': None,
+        'certificate_text': None
     }
 
-    # Encode to base64 for download
-    prompt_json = json.dumps(prompt_data, indent=2)
-    b64 = base64.b64encode(prompt_json.encode()).decode()
-    filename = f"prompt_template_{name.lower().replace(' ', '_')}.json"
+if 'api_key_set' not in st.session_state:
+    st.session_state.api_key_set = False
 
-    # Create download link
-    href = f'<a download="{filename}" href="data:application/json;base64,{b64}">Download Prompt Template</a>'
-    display(HTML(href))
+if 'template_name' not in st.session_state:
+    st.session_state.template_name = "Default Template"
 
-    return prompt_data
+if 'prompt_template' not in st.session_state:
+    st.session_state.prompt_template = DEFAULT_PROMPT_TEMPLATE
 
-def load_prompt_template_from_file():
-    """Load a prompt template from an uploaded JSON file."""
-    uploaded = files.upload()
-
-    if not uploaded:
-        return None, None, "No file selected"
-
-    try:
-        file_name = list(uploaded.keys())[0]
-        content = uploaded[file_name]
-        prompt_data = json.loads(content)
-
-        return prompt_data.get("name", "Custom Template"), prompt_data.get("template", ""), prompt_data.get("system_instruction", "")
-    except Exception as e:
-        return None, None, f"Error loading template: {str(e)}"
+if 'system_instruction' not in st.session_state:
+    st.session_state.system_instruction = SYSTEM_INSTRUCTION
 
 # Function to generate certificate
 def generate_certificate(participant_data, prompt_template=None, system_instruction=None):
     """Generate a personalized certificate using Google's Gemini model."""
 
     if prompt_template is None:
-        prompt_template = DEFAULT_PROMPT_TEMPLATE
+        prompt_template = st.session_state.prompt_template
 
     if system_instruction is None:
-        system_instruction = SYSTEM_INSTRUCTION
+        system_instruction = st.session_state.system_instruction
 
     # Get proper pronoun based on gender
     pronoun = "he"
@@ -481,7 +179,7 @@ def generate_certificate(participant_data, prompt_template=None, system_instruct
     )
 
     try:
-        # Set up the model - Check if "gemini-2.0-pro-exp-02-05" is available
+        # Set up the model
         model = genai.GenerativeModel("gemini-2.0-flash-001")
 
         # Generate content with system instruction AND formatted prompt
@@ -498,7 +196,8 @@ def generate_certificate(participant_data, prompt_template=None, system_instruct
         # Generate content
         response = model.generate_content(
             full_prompt,
-            generation_config=generation_config        )
+            generation_config=generation_config
+        )
 
         # Check if we have any candidates
         if not response.candidates or not response.candidates[0].content or not response.candidates[0].content.parts:
@@ -522,372 +221,445 @@ def load_sample_data():
         "learning_impact": "The program helped me understand how to price my products and manage my time between my job and side hustle"
     }
 
-# Create prompt engineering interface
-def create_prompt_engineering_interface():
-    # Create output for this section
-    prompt_output = widgets.Output()
+# Function to create download links
+def get_download_link(certificate_text, name):
+    """Create download links for certificate."""
+    # Text file
+    b64 = base64.b64encode(certificate_text.encode()).decode()
+    filename = f"certificate_{name.replace(' ', '_')}.txt"
+    
+    # Format for different platforms
+    whatsapp_text = certificate_text.replace('\n', '%0A')
+    email_subject = f"Certificate of Completion for {name}"
+    email_body = certificate_text.replace('\n', '%0D%0A')
+    
+    return filename, b64, whatsapp_text, email_subject, email_body
 
-    with prompt_output:
-        # Prompt template editor
-        template_name_widget = widgets.Text(
-            description='Template Name:',
-            placeholder='e.g., Business Focus',
-            value='Default Template',
-            layout=widgets.Layout(width='80%')
-        )
+# Create tabs
+tab1, tab2, tab3 = st.tabs(["Generate Certificate", "Prompt Engineering", "Batch Processing"])
 
-        prompt_template_widget = widgets.Textarea(
-            placeholder='Enter prompt template here...',
-            value=DEFAULT_PROMPT_TEMPLATE,
-            layout=widgets.Layout(width='100%', height='300px')
-        )
-
-        system_instruction_widget = widgets.Textarea(
-            placeholder='Enter system instructions here...',
-            value=SYSTEM_INSTRUCTION,
-            layout=widgets.Layout(width='100%', height='200px')
-        )
-
-        # Buttons for saving/loading templates
-        save_button = widgets.Button(
-            description='Save Prompt Template',
-            button_style='primary',
-            layout=widgets.Layout(width='50%')
-        )
-
-        load_button = widgets.Button(
-            description='Load Prompt Template',
-            button_style='info',
-            layout=widgets.Layout(width='50%')
-        )
-
-        template_status = widgets.HTML("")
-
-        def on_save_button_clicked(b):
-            name = template_name_widget.value
-            template = prompt_template_widget.value
-            instruction = system_instruction_widget.value
-
-            if not name or not template:
-                template_status.value = '<div style="color: red; padding: 10px; border-left: 5px solid red;">Template name and content are required</div>'
-                return
-
-            save_prompt_template(name, template, instruction)
-            template_status.value = f'<div style="color: green; padding: 10px; border-left: 5px solid green;">Template "{name}" saved successfully! You can download it using the link above.</div>'
-
-        def on_load_button_clicked(b):
-            name, template, instruction = load_prompt_template_from_file()
-
-            if name and template:
-                template_name_widget.value = name
-                prompt_template_widget.value = template
-                if instruction:
-                    system_instruction_widget.value = instruction
-
-                template_status.value = f'<div style="color: green; padding: 10px; border-left: 5px solid green;">Template "{name}" loaded successfully!</div>'
+# Tab 1: Generate Certificate
+with tab1:
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        st.subheader("Participant Information")
+        
+        # Add a button to load sample data
+        if st.button("Load Sample Data", key="load_sample"):
+            sample = load_sample_data()
+            st.session_state.name = sample["name"]
+            st.session_state.gender = sample["gender"]
+            st.session_state.completion_date = sample["completion_date"]
+            st.session_state.strengths = sample["strengths"]
+            st.session_state.goals = sample["goals"]
+            st.session_state.myom_status = sample["myom_status"]
+            st.session_state.learning_impact_option = "Custom response"
+            st.session_state.custom_impact = sample["learning_impact"]
+        
+        # Name input
+        name = st.text_input("Name", value=st.session_state.get("name", ""), 
+                            placeholder="e.g., Thabo Mokoena")
+        
+        # Gender selection
+        gender = st.selectbox("Gender", options=["Male", "Female", "Other"], 
+                             index=0 if not st.session_state.get("gender") else 
+                             ["Male", "Female", "Other"].index(st.session_state.get("gender")))
+        
+        # Date input
+        completion_date = st.text_input("Completion Date", value=st.session_state.get("completion_date", ""), 
+                                       placeholder="e.g., 15 March 2025")
+        
+        # Strengths input
+        strengths = st.text_area("Strengths", value=st.session_state.get("strengths", ""), 
+                               placeholder="e.g., Communication skills, adaptability, creative problem-solving", 
+                               height=80)
+        
+        # Goals input
+        goals = st.text_area("Goals", value=st.session_state.get("goals", ""), 
+                           placeholder="e.g., Start a small business, save for education", 
+                           height=80)
+        
+        # MYOM status
+        myom_status_options = [
+            "I've never thought about making money for myself – I just want a job or a chance to study",
+            "I've thought about making money for myself, but I've never actually done so",
+            "I have made money for myself before, but I don't do it all the time",
+            "I'm making money for myself, and I want to keep making money and grow my business"
+        ]
+        
+        myom_status = st.selectbox("MYOM Status", options=myom_status_options,
+                                  index=0 if not st.session_state.get("myom_status") else
+                                  myom_status_options.index(st.session_state.get("myom_status")))
+        
+        # Learning impact
+        learning_impact_options = [
+            "I learned a lot and am applying it daily",
+            "I learned some useful things that I'm starting to apply",
+            "I learned a few things that might be helpful",
+            "I didn't learn much that was useful to me",
+            "Custom response"
+        ]
+        
+        learning_impact_option = st.selectbox("Learning Impact", options=learning_impact_options,
+                                           index=0 if not st.session_state.get("learning_impact_option") else
+                                           learning_impact_options.index(st.session_state.get("learning_impact_option")))
+        
+        # Custom impact input (shown conditionally)
+        custom_impact = ""
+        if learning_impact_option == "Custom response":
+            custom_impact = st.text_area("Custom Learning Impact", 
+                                       value=st.session_state.get("custom_impact", ""),
+                                       placeholder="Enter custom learning impact here", 
+                                       height=80)
+    
+    with col2:
+        st.subheader("API Authentication")
+        api_key = st.text_input("Google API Key", type="password", 
+                              help="Enter your Google Gemini API key")
+        
+        if st.button("Set API Key"):
+            if not api_key:
+                st.error("Please enter an API key")
             else:
-                template_status.value = f'<div style="color: red; padding: 10px; border-left: 5px solid red;">{instruction}</div>'
-
-        save_button.on_click(on_save_button_clicked)
-        load_button.on_click(on_load_button_clicked)
-
-        # Display prompt engineering widgets
-        display(widgets.HTML("<h2>Prompt Engineering</h2>"))
-        display(widgets.HTML("<p>Customize the prompt template and system instructions used to generate certificates.</p>"))
-
-        display(widgets.HTML("<h3>Template Name</h3>"))
-        display(template_name_widget)
-
-        display(widgets.HTML("<h3>System Instructions</h3>"))
-        display(widgets.HTML("<p>NOTE: For Gemini 2.0 we combine these with the prompt - they are not sent separately.</p>"))
-        display(system_instruction_widget)
-
-        display(widgets.HTML("<h3>Prompt Template</h3>"))
-        display(widgets.HTML("<p>This is the actual template that will be filled with participant data. Use {name}, {gender}, {completion_date}, etc. as placeholders.</p>"))
-        display(prompt_template_widget)
-
-        display(widgets.HBox([save_button, load_button]))
-        display(template_status)
-
-        # Template variables reference
-        display(widgets.HTML("<h3>Available Template Variables</h3>"))
-        variables_table = """
-        <table style="width:100%; border-collapse: collapse;">
-          <tr style="background-color: #f2f2f2;">
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Variable</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Description</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Example</th>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">{name}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Participant's full name</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Thabo Mokoena</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">{gender}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Participant's gender</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Male, Female, Other</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">{completion_date}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">When they completed 30 check-ins</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">15 March 2025</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">{strengths}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Participant's self-identified strengths</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Communication skills, adaptability</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">{goals}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Participant's personal/professional goals</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Start a small business selling crafts</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">{myom_status}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Current relationship with self-employment</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">I have made money for myself before</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">{learning_impact}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Self-reported impact of the program</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">I learned how to price my products</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">{pronoun}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Appropriate pronoun based on gender</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">he, she, they</td>
-          </tr>
-          <tr>
-            <td style="border: 1px solid #ddd; padding: 8px;">{pronoun_cap}</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">Capitalized pronoun</td>
-            <td style="border: 1px solid #ddd; padding: 8px;">He, She, They</td>
-          </tr>
-        </table>
-        """
-        display(HTML(variables_table))
-
-    return prompt_output, template_name_widget, prompt_template_widget, system_instruction_widget
-
-# Create the main certificate form
-def create_certificate_form(template_name_widget, prompt_template_widget, system_instruction_widget):
-    # Create widgets
-    name_widget = widgets.Text(
-        description='Name:',
-        placeholder='e.g., Thabo Mokoena',
-        layout=widgets.Layout(width='80%')
-    )
-
-    gender_widget = widgets.Dropdown(
-        options=['Male', 'Female', 'Other'],
-        value='Male',
-        description='Gender:',
-        layout=widgets.Layout(width='50%')
-    )
-
-    date_widget = widgets.DatePicker(
-        description='Completion Date:',
-        layout=widgets.Layout(width='50%')
-    )
-
-    strengths_widget = widgets.Textarea(
-        description='Strengths:',
-        placeholder='e.g., Communication skills, adaptability, creative problem-solving',
-        layout=widgets.Layout(width='80%', height='80px')
-    )
-
-    goals_widget = widgets.Textarea(
-        description='Goals:',
-        placeholder='e.g., Start a small business, save for education',
-        layout=widgets.Layout(width='80%', height='80px')
-    )
-
-    myom_status_options = [
-        "I've never thought about making money for myself – I just want a job or a chance to study",
-        "I've thought about making money for myself, but I've never actually done so",
-        "I have made money for myself before, but I don't do it all the time",
-        "I'm making money for myself, and I want to keep making money and grow my business"
-    ]
-
-    myom_status_widget = widgets.Dropdown(
-        options=myom_status_options,
-        value=myom_status_options[0],
-        description='MYOM Status:',
-        layout=widgets.Layout(width='80%')
-    )
-
-    learning_impact_options = [
-        "I learned a lot and am applying it daily",
-        "I learned some useful things that I'm starting to apply",
-        "I learned a few things that might be helpful",
-        "I didn't learn much that was useful to me",
-        "Custom response"
-    ]
-
-    learning_impact_widget = widgets.Dropdown(
-        options=learning_impact_options,
-        value=learning_impact_options[0],
-        description='Learning Impact:',
-        layout=widgets.Layout(width='80%')
-    )
-
-    custom_impact_widget = widgets.Textarea(
-        placeholder='Enter custom learning impact here',
-        layout=widgets.Layout(width='80%', height='80px')
-    )
-
-    button = widgets.Button(
-        description='Generate Certificate',
-        button_style='success',
-        layout=widgets.Layout(width='50%')
-    )
-
-    regenerate_button = widgets.Button(
-        description='Regenerate Certificate',
-        button_style='warning',
-        layout=widgets.Layout(width='50%'),
-        disabled=True
-    )
-
-    output = widgets.Output()
-
-    # Load sample data button
-    load_sample_button = widgets.Button(
-        description='Load Sample Data',
-        button_style='info',
-        layout=widgets.Layout(width='50%')
-    )
-
-    def on_load_sample_button_clicked(b):
-        sample_data = load_sample_data()
-        name_widget.value = sample_data['name']
-        gender_widget.value = sample_data['gender']
-        # Convert string date to datetime for the date picker
-        date_widget.value = datetime.strptime(sample_data['completion_date'], "%d %B %Y").date()
-        strengths_widget.value = sample_data['strengths']
-        goals_widget.value = sample_data['goals']
-        myom_status_widget.value = sample_data['myom_status']
-        learning_impact_widget.value = "Custom response"
-        custom_impact_widget.value = sample_data['learning_impact']
-
-    load_sample_button.on_click(on_load_sample_button_clicked)
-
-    def on_learning_impact_change(change):
-        if change['new'] == "Custom response":
-            custom_impact_widget.layout.display = ''
+                try:
+                    # Configure Gemini with the provided API key
+                    genai.configure(api_key=api_key)
+                    st.session_state.api_key_set = True
+                    st.success("API key set successfully! You can now generate certificates.")
+                except Exception as e:
+                    st.error(f"Error setting API key: {str(e)}")
+    
+    # Buttons for generating certificates
+    col1, col2 = st.columns(2)
+    with col1:
+        generate_button = st.button("Generate Certificate", 
+                                  type="primary", 
+                                  disabled=not st.session_state.api_key_set)
+    with col2:
+        regenerate_button = st.button("Regenerate Certificate", 
+                                    disabled=not st.session_state.api_key_set or 
+                                    st.session_state.last_certificate_data['participant_data'] is None)
+    
+    # Certificate generation logic
+    if generate_button and st.session_state.api_key_set:
+        if not name or not completion_date or not strengths or not goals:
+            st.error("Please fill in all required fields (Name, Date, Strengths, and Goals)")
         else:
-            custom_impact_widget.layout.display = 'none'
-
-    learning_impact_widget.observe(on_learning_impact_change, names='value')
-
-    # Initially hide the custom impact field
-    custom_impact_widget.layout.display = 'none'
-
-    # Keep track of the last generated certificate data
-    last_certificate_data = {
-        'participant_data': None,
-        'certificate_text': None
-    }
-
-    def generate_certificate_from_form():
-        # Format the date
-        completion_date = date_widget.value.strftime("%d %B %Y")
-
-        # Get the correct learning impact text
-        if learning_impact_widget.value == "Custom response":
-            final_learning_impact = custom_impact_widget.value
+            with st.spinner("Generating certificate..."):
+                # Determine the final learning impact text
+                if learning_impact_option == "Custom response":
+                    final_learning_impact = custom_impact
+                else:
+                    final_learning_impact = learning_impact_option
+                
+                # Create participant data
+                participant_data = {
+                    "name": name,
+                    "gender": gender,
+                    "completion_date": completion_date,
+                    "strengths": strengths,
+                    "goals": goals,
+                    "myom_status": myom_status,
+                    "learning_impact": final_learning_impact
+                }
+                
+                # Generate certificate
+                certificate_text = generate_certificate(participant_data)
+                
+                # Save for regeneration
+                st.session_state.last_certificate_data['participant_data'] = participant_data
+                st.session_state.last_certificate_data['certificate_text'] = certificate_text
+                
+                # Save form values to session state
+                st.session_state.name = name
+                st.session_state.gender = gender
+                st.session_state.completion_date = completion_date
+                st.session_state.strengths = strengths
+                st.session_state.goals = goals
+                st.session_state.myom_status = myom_status
+                st.session_state.learning_impact_option = learning_impact_option
+                st.session_state.custom_impact = custom_impact
+                
+                # Display certificate
+                st.subheader("Generated Certificate")
+                st.markdown(f'<div class="certificate-container">{certificate_text}</div>', unsafe_allow_html=True)
+                
+                # Create download links
+                filename, b64, whatsapp_text, email_subject, email_body = get_download_link(certificate_text, name)
+                
+                # Add download buttons
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.download_button(
+                        label="📄 Download as Text",
+                        data=certificate_text,
+                        file_name=filename,
+                        mime="text/plain",
+                    )
+                
+                with col2:
+                    st.markdown(
+                        f'<a href="https://wa.me/?text={whatsapp_text}" target="_blank" class="stButton"><button style="background-color: #25D366; color: white;">📱 Open in WhatsApp</button></a>',
+                        unsafe_allow_html=True
+                    )
+                
+                with col3:
+                    st.markdown(
+                        f'<a href="mailto:?subject={email_subject}&body={email_body}" class="stButton"><button style="background-color: #0078D4; color: white;">📧 Send via Email</button></a>',
+                        unsafe_allow_html=True
+                    )
+    
+    # Regenerate certificate logic
+    if regenerate_button and st.session_state.api_key_set:
+        if st.session_state.last_certificate_data['participant_data'] is None:
+            st.error("No previous certificate data found")
         else:
-            final_learning_impact = learning_impact_widget.value
+            with st.spinner("Regenerating certificate..."):
+                # Generate a new certificate with the same data
+                certificate_text = generate_certificate(st.session_state.last_certificate_data['participant_data'])
+                
+                # Update the stored certificate
+                st.session_state.last_certificate_data['certificate_text'] = certificate_text
+                
+                # Display certificate
+                st.subheader("Regenerated Certificate")
+                st.markdown(f'<div class="certificate-container">{certificate_text}</div>', unsafe_allow_html=True)
+                
+                # Create download links
+                name = st.session_state.last_certificate_data['participant_data']['name']
+                filename, b64, whatsapp_text, email_subject, email_body = get_download_link(certificate_text, name)
+                
+                # Add download buttons
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.download_button(
+                        label="📄 Download as Text",
+                        data=certificate_text,
+                        file_name=filename,
+                        mime="text/plain",
+                    )
+                
+                with col2:
+                    st.markdown(
+                        f'<a href="https://wa.me/?text={whatsapp_text}" target="_blank" class="stButton"><button style="background-color: #25D366; color: white;">📱 Open in WhatsApp</button></a>',
+                        unsafe_allow_html=True
+                    )
+                
+                with col3:
+                    st.markdown(
+                        f'<a href="mailto:?subject={email_subject}&body={email_body}" class="stButton"><button style="background-color: #0078D4; color: white;">📧 Send via Email</button></a>',
+                        unsafe_allow_html=True
+                    )
 
-        # Create participant data
-        participant_data = {
-            "name": name_widget.value,
-            "gender": gender_widget.value,
-            "completion_date": completion_date,
-            "strengths": strengths_widget.value,
-            "goals": goals_widget.value,
-            "myom_status": myom_status_widget.value,
-            "learning_impact": final_learning_impact
-        }
+# Tab 2: Prompt Engineering
+with tab2:
+    st.subheader("Customize Prompt Template and System Instructions")
+    st.write("Customize the prompt template and system instructions used to generate certificates.")
+    
+    # Template name
+    template_name = st.text_input("Template Name", value=st.session_state.template_name, 
+                                placeholder="e.g., Business Focus")
+    
+    # System instructions
+    st.markdown("### System Instructions")
+    st.write("NOTE: For Gemini 2.0 we combine these with the prompt - they are not sent separately.")
+    system_instruction = st.text_area("System Instructions", value=st.session_state.system_instruction, 
+                                    height=200)
+    
+    # Prompt template
+    st.markdown("### Prompt Template")
+    st.write("This is the actual template that will be filled with participant data. Use {name}, {gender}, {completion_date}, etc. as placeholders.")
+    prompt_template = st.text_area("Prompt Template", value=st.session_state.prompt_template, 
+                                 height=300)
+    
+    # Save and load buttons
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Save Prompt Template"):
+            if not template_name or not prompt_template:
+                st.error("Template name and content are required")
+            else:
+                # Save template to session state
+                st.session_state.template_name = template_name
+                st.session_state.prompt_template = prompt_template
+                st.session_state.system_instruction = system_instruction
+                
+                # Create downloadable JSON
+                prompt_data = {
+                    "name": template_name,
+                    "template": prompt_template,
+                    "system_instruction": system_instruction
+                }
+                
+                # Make JSON available for download
+                json_data = json.dumps(prompt_data, indent=2)
+                filename = f"prompt_template_{template_name.lower().replace(' ', '_')}.json"
+                
+                st.download_button(
+                    label="📄 Download Template",
+                    data=json_data,
+                    file_name=filename,
+                    mime="application/json",
+                )
+                
+                st.success(f'Template "{template_name}" saved successfully!')
+    
+    with col2:
+        uploaded_file = st.file_uploader("Upload Prompt Template", type=["json"])
+        if uploaded_file is not None:
+            try:
+                # Read and parse the JSON file
+                content = uploaded_file.read()
+                prompt_data = json.loads(content)
+                
+                # Update session state with the loaded template
+                st.session_state.template_name = prompt_data.get("name", "Custom Template") 
+                st.session_state.prompt_template = prompt_data.get("template", DEFAULT_PROMPT_TEMPLATE)
+                st.session_state.system_instruction = prompt_data.get("system_instruction", SYSTEM_INSTRUCTION)
+                
+                st.success(f"Template \"{prompt_data.get('name', 'Custom Template')}\" loaded successfully!")
+                
+                # Refresh the page to show updated values
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error loading template: {str(e)}")
+    
+    # Variables reference
+    st.markdown("### Available Template Variables")
+    st.markdown("""
+    | Variable | Description | Example |
+    | --- | --- | --- |
+    | {name} | Participant's full name | Thabo Mokoena |
+    | {gender} | Participant's gender | Male, Female, Other |
+    | {completion_date} | When they completed 30 check-ins | 15 March 2025 |
+    | {strengths} | Participant's self-identified strengths | Communication skills, adaptability |
+    | {goals} | Participant's personal/professional goals | Start a small business selling crafts |
+    | {myom_status} | Current relationship with self-employment | I have made money for myself before |
+    | {learning_impact} | Self-reported impact of the program | I learned how to price my products |
+    | {pronoun} | Appropriate pronoun based on gender | he, she, they |
+    | {pronoun_cap} | Capitalized pronoun | He, She, They |
+    """)
 
-        # Get the prompt template and system instruction
-        template = prompt_template_widget.value
-        system = system_instruction_widget.value
+# Tab 3: Batch Processing
+with tab3:
+    st.subheader("Batch Certificate Generation")
+    st.write("Upload a CSV file with participant data to generate multiple certificates at once.")
+    
+    # Upload CSV file
+    uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
+    
+    # Process batch if file is uploaded
+    if uploaded_file is not None and st.session_state.api_key_set:
+        # Read CSV
+        csv_data = []
+        try:
+            csv_file = io.StringIO(uploaded_file.getvalue().decode('utf-8'))
+            reader = csv.DictReader(csv_file)
+            field_names = reader.fieldnames
+            
+            # Check for required fields
+            required_fields = ['name', 'gender', 'completion_date', 'strengths', 'goals', 'myom_status', 'learning_impact']
+            missing_fields = [field for field in required_fields if field not in field_names]
+            
+            if missing_fields:
+                st.error(f"Missing required columns in CSV: {', '.join(missing_fields)}")
+            else:
+                # Read CSV data
+                for row in reader:
+                    csv_data.append(row)
+                
+                # Set up progress tracking
+                total_rows = len(csv_data)
+                st.info(f"Found {total_rows} participants in the CSV file. Ready to generate certificates.")
+                
+                if st.button("Generate Batch Certificates"):
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
+                    
+                    # Process each row
+                    all_certificates = []
+                    errors = []
+                    
+                    for i, participant in enumerate(csv_data):
+                        try:
+                            status_text.info(f"Generating certificate {i+1}/{total_rows} for {participant.get('name', 'Unknown')}...")
+                            
+                            # Generate certificate
+                            certificate = generate_certificate(participant)
+                            
+                            # Store certificate
+                            all_certificates.append({
+                                'name': participant.get('name', 'Unknown'),
+                                'certificate': certificate
+                            })
+                            
+                            # Update progress
+                            progress_bar.progress((i + 1) / total_rows)
+                        except Exception as e:
+                            errors.append(f"Error processing row {i+1} ({participant.get('name', 'Unknown')}): {str(e)}")
+                    
+                    # Create combined text file with all certificates
+                    combined_text = "\n\n" + "="*50 + "\n\n".join([f"CERTIFICATE FOR: {cert['name']}\n\n{cert['certificate']}" for cert in all_certificates])
+                    
+                    # Create CSV for download
+                    result_rows = []
+                    for cert in all_certificates:
+                        result_rows.append({
+                            "Name": cert['name'],
+                            "Certificate": cert['certificate']
+                        })
+                    
+                    result_df = pd.DataFrame(result_rows)
+                    csv_data = result_df.to_csv(index=False)
+                    
+                    # Update status
+                    if errors:
+                        error_text = "\n".join(errors)
+                        st.warning(f"Completed with {len(errors)} errors:\n{error_text}")
+                    else:
+                        st.success(f"Successfully generated {len(all_certificates)} certificates!")
+                    
+                    # Provide download buttons
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.download_button(
+                            label="📄 Download All as Text",
+                            data=combined_text,
+                            file_name="all_certificates.txt",
+                            mime="text/plain",
+                        )
+                    
+                    with col2:
+                        st.download_button(
+                            label="📊 Download Results as CSV",
+                            data=csv_data,
+                            file_name="all_certificates.csv",
+                            mime="text/csv",
+                        )
+                    
+                    # Show sample certificate
+                    if all_certificates:
+                        st.subheader("Sample Certificate")
+                        st.write(f"**{all_certificates[0]['name']}**")
+                        st.markdown(f'<div class="certificate-container">{all_certificates[0]["certificate"]}</div>', unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Error processing batch: {str(e)}")
+    elif not st.session_state.api_key_set and uploaded_file is not None:
+        st.error("Please set the API key in the Generate Certificate tab before processing batch certificates.")
+    
+    # Show CSV format example
+    st.subheader("CSV Format Example:")
+    csv_example = """name,gender,completion_date,strengths,goals,myom_status,learning_impact
+Thabo Mokoena,Male,15 March 2025,"Communication skills, adaptability, creative problem-solving","Start a small business selling handcrafted items, save money for further education","I have made money for myself before, but I don't do it all the time","The program helped me understand how to price my products and manage my time between my job and side hustle"
+Nomsa Dlamini,Female,16 March 2025,"Organization, attention to detail, team coordination","Find employment in administration, start a small catering business on weekends","I've thought about making money for myself, but I've never actually done so","I learned some useful things that I'm starting to apply"
+"""
+    
+    st.code(csv_example, language="text")
 
-        # Generate certificate
-        certificate_text = generate_certificate(
-            participant_data,
-            prompt_template=template,
-            system_instruction=system
-        )
-
-        # Save for possible regeneration
-        last_certificate_data['participant_data'] = participant_data
-        last_certificate_data['certificate_text'] = certificate_text
-
-        return certificate_text
-
-    def on_button_clicked(b):
-        with output:
-            output.clear_output()
-            print("Generating certificate... Please wait.")
-
-            if not name_widget.value or not date_widget.value or not strengths_widget.value or not goals_widget.value:
-                print("Error: Please fill in all required fields (Name, Date, Strengths, and Goals)")
-                return
-
-            certificate_text = generate_certificate_from_form()
-
-            # Display the certificate
-            print("\n----- Generated Certificate -----\n")
-            print(certificate_text)
-            print("\n---------------------------------\n")
-
-            # Create various download options
-            # Text file
-            text_b64 = base64.b64encode(certificate_text.encode()).decode()
-            text_filename = f"certificate_{name_widget.value.replace(' ', '_')}.txt"
-            text_href = f'<a download="{text_filename}" href="data:text/plain;base64,{text_b64}" class="download-link">Download as Text</a>'
-
-            # WhatsApp-ready format
-            whatsapp_text = certificate_text.replace('\n', '%0A')
-            whatsapp_href = f'<a href="https://wa.me/?text={whatsapp_text}" target="_blank" class="whatsapp-link">Open in WhatsApp</a>'
-
-            # Email-ready format
-            email_subject = f"Certificate of Completion for {name_widget.value}"
-            email_body = certificate_text.replace('\n', '%0D%0A')
-            email_href = f'<a href="mailto:?subject={email_subject}&body={email_body}" class="email-link">Send via Email</a>'
-
-            # Create fancy download links
-            fancy_links = f"""
-            <div style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px;">
-                <a download="{text_filename}" href="data:text/plain;base64,{text_b64}"
-                   style="background-color: #4CAF50; color: white; padding: 10px 15px; text-decoration: none;
-                          border-radius: 4px; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📄</span> Download as Text
-                </a>
-
-                <a href="https://wa.me/?text={whatsapp_text}" target="_blank"
-                   style="background-color: #25D366; color: white; padding: 10px 15px; text-decoration: none;
-                          border-radius: 4px; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📱</span> Open in WhatsApp
-                </a>
-
-                <a href="mailto:?subject={email_subject}&body={email_body}"
-                   style="background-color: #0078D4; color: white; padding: 10px 15px; text-decoration: none;
-                          border-radius: 4px; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📧</span> Send via Email
-                </a>
-
-                <button onclick="navigator.clipboard.writeText(`{certificate_text}`); alert('Certificate copied to clipboard!');"
-                        style="background-color: #6c757d; color: white; padding: 10px 15px; border: none;
-                               border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center;">
-                   <span style="margin-right: 5px;">📋</span> Copy to Clipboard
-                </button>
-            </div>
-            """
-
-            display(HTML(fancy_links))
-
-            # Enable regenerate button
-            regenerate_button.disabled = False
+# Footer
+st.markdown("""
+<div class="footer">
+    <p>CoachMee Certificate Generator v1.0 | Harambee Youth Employment Accelerator | © 2025</p>
+</div>
+""", unsafe_allow_html=True)
