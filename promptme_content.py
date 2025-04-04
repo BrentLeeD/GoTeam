@@ -993,7 +993,7 @@ def settings_tab():
 # Footer
 st.markdown("""
 <div class="footer">
-    <p>PromptMe - Content Edition v1.0 | HYEA Staff Apps Experimental | © 2025</p>
+    <p>PromptMe - Content Edition v1.0  | © 2025</p>
 </div>
 """, unsafe_allow_html=True)
 
