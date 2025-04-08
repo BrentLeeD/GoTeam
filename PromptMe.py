@@ -90,42 +90,88 @@ st.markdown("""
 
 # Prompt Templates with System Instructions
 DEFAULT_PROMPT_TEMPLATE = """
-Create a short, personalized letter of completion for a participant in the "Make Your Own Money" (MYOM) WhatsApp learning journey delivered through CoachMee. This program is part of the National Youth Service (NYS) in South Africa.
+Create a personalized letter of completion for a participant in the "Make Your Own Money" (MYOM) WhatsApp learning journey delivered through CoachMee. This program is part of the National Youth Service (NYS) in South Africa.
 
 Here is the participant information:
 - Name: {name}
-- Gender: {gender}
 - Completion Date: {completion_date}
+- Organization: {organization}
 - Strengths (identified by participant): {strengths}
 - Goals (identified by participant): {goals}
-- MYOM Status After Program: {myom_status}
-- Learning Impact (participant feedback): {learning_impact}
 
-Follow this specific format and style for the letter - it must be ONE PARAGRAPH ONLY, similar in length to this example:
+Follow this specific format and style for the letter:
 
-"On 20 September 2024, Zikhona Mandende completed 30 goal-setting conversations with 'Coachmee' - a smart chatbot powered by SAYouth.mobi. In her first goal-setting session with Coachmee, she introduced herself as a lovely person who enjoys smiling and has good interpersonal, problem-solving, basic computer, and communication skills. She expressed her desire to gain more skills to advance her career in the contact center industry, aiming to become a manager. The 30 Whatsapp-enabled sessions that followed focused on the importance of setting daily goals to achieve long-term objectives and aspirations. Zikhona also embraced meditation and journaling, which have been proven to help manage emotions and improve well-being. Coachmee says it was a pleasure coaching Zikhona - he learned a lot from her, and wishes her all the best in her future endeavors!"
+"On {completion_date}, {name} completed the Make Your Own Money Learning Journey program, a series of WhatsApp modules presented by SA Youth. The program is guided by 'CoachMee' - a chatbot that provides support along the way. In {pronoun}r first session, {pronoun} told CoachMee that {pronoun} was part of the NYS program, based at {organization}. {pronoun_cap} also shared that {pronoun}r strengths include {strengths_expanded}.
 
-Your letter should follow this format:
+The 30 WhatsApp sessions covered many aspects of making your own money, with stories of young South Africans who found ways to earn income. Topics included starting small, finding opportunities near you, connecting with customers, and growing your hustle. The journey also shared tools for setting goals, staying motivated when things get tough, and building confidence.
 
-"On {completion_date}, {name} completed 30 income-generating skills conversations with 'CoachMee' - a smart chatbot powered by SAYouth.mobi. In {pronoun}r first session with CoachMee, {pronoun} introduced {pronoun}mself as someone with strengths in [mention 2-3 strengths from the participant data]. {pronoun_cap} expressed {pronoun}r desire to [mention their primary goal]. The 30 WhatsApp-enabled sessions that followed focused on essential skills for making your own money, including [mention 1-2 MYOM topics like spotting opportunities, finding funding, marketing, etc.]. {name} engaged with inspiring stories from young South African entrepreneurs like Octoria's sneaker cleaning business and Thato's spaza shop success. {pronoun_cap} also embraced tools for goal-setting and planning, which have been proven to help develop the entrepreneurial mindset needed for success. CoachMee says it was a pleasure coaching {name} - {pronoun} showed dedication by completing all 30 sessions, and SA Youth wishes {pronoun}m continued success on {pronoun}r journey to make {pronoun}r own money!"
+CoachMee says it was a pleasure supporting {name} throughout this journey - {pronoun}r completion of all 30 sessions shows {pronoun}r dedication. The knowledge shared in this program can help in many different situations in life. We believe {name}'s {strength_reference} will serve {pronoun}m well as {pronoun} applies what {pronoun}'s learned. SA Youth wishes {pronoun}m all the best!"
 
-Make it exactly ONE PARAGRAPH with South African references, warm and encouraging. It should be similar in length to the example with Zikhona.
+The letter should be:
+- Warm and encouraging but factual
+- Written in simple, accessible English
+- Limited to the specific format above
+- Personalized based on the participant's information
+
+STRENGTH REFERENCE GUIDELINES:
+If the participant provided detailed strengths information:
+- Select one or two significant strengths to highlight
+- Briefly comment on why this strength is valuable (e.g., "creative talents in performing arts")
+
+If the participant provided minimal information about their strengths (less than 3 words or very generic terms):
+- Focus on their dedication to completing the program instead
+- Use general positive qualities that can be inferred from program completion
+- If only one very brief strength is listed (e.g., "talking"), expand it into a more complete quality (e.g., "communication skills")
+- Avoid making up specific talents or abilities not mentioned by the participant
+
+For the {strengths_expanded} section:
+- If strengths are substantial, use: "[strengths] - [brief positive comment about these strengths]"
+- If strengths are minimal, use: "[strengths] - an important quality for [relevant context]"
+- If strengths are extremely minimal, use: "While [pronoun] didn't elaborate much on specific strengths, [pronoun]r completion of this program demonstrates dedication"
+
+For the {strength_reference} section at the end:
+- If strengths are substantial, use: "[specific strength] in [area]"
+- If strengths are minimal, use: "commitment and willingness to learn"
 """
 
 SYSTEM_INSTRUCTION = """
 You are an expert certificate writer for the CoachMee program at Harambee Youth Employment Accelerator in South Africa.
 Your task is to create personalized, warm, and authentic completion certificates that highlight the participant's journey through the Make Your Own Money (MYOM) WhatsApp learning program.
 
-Follow these principles:
-1. Use a warm, conversational South African tone - as if sending a WhatsApp message to a friend
-2. Incorporate specific South African entrepreneurial references (spaza shops, amagwinya businesses, etc.)
-3. Reference real MYOM content like Octoria's sneaker cleaning business, Thato's spaza shop, and Nomsa's funding journey
-4. Highlight the participant's strengths and goals in a meaningful way
-5. Keep the certificate to exactly ONE paragraph of appropriate length
-6. Use proper pronouns based on the participant's gender
-7. Make the certificate something the participant would be proud to share with friends, family and potential employers
+CRITICAL INSTRUCTION - FACTUAL ACCURACY:
+The certificate MUST only contain factual and verifiable statements:
 
-Focus on the entrepreneurial skills and mindset developed through the program, emphasizing how the participant can use these skills to make their own money.
+1. VERIFIED FACTS to include:
+   - Program completion (date, number of sessions)
+   - Program content that was actually delivered
+   - Participant's self-reported information (name, organization, strengths)
+   - That the program was facilitated by CoachMee
+
+2. AVOID claims about:
+   - Skills gained or learned unless explicitly self-reported
+   - Changes in behavior or mindset without evidence
+   - Future performance or application of content
+   - Specific outcomes attributable to the program
+
+3. ACCEPTABLE PHRASES:
+   - "The program covered topics such as..."
+   - "The sessions included content about..."
+   - "She/he completed all 30 sessions..."
+   - "CoachMee provided support throughout the journey..."
+
+4. UNACCEPTABLE PHRASES:
+   - "She/he learned how to..."
+   - "She/he gained skills in..."
+   - "She/he is now able to..."
+   - "She/he has transformed into..."
+
+IMPORTANT STYLE GUIDELINES:
+1. DO NOT use the word "entrepreneurship" - instead use phrases like "making your own money" or "hustling"
+2. Use a warm, conversational South African tone - as if sending a WhatsApp message to a friend
+3. Keep language simple and accessible
+4. Use proper pronouns based on the participant's gender
+5. Make the certificate something the participant would be proud to share
+6. Focus on program completion and content, not transformative outcomes
 """
 
 # Initialize session state variables
@@ -171,12 +217,13 @@ def generate_certificate(participant_data, prompt_template=None, system_instruct
         name=participant_data['name'],
         gender=participant_data.get('gender', 'Male'),
         completion_date=participant_data['completion_date'],
+        organization=participant_data.get('organization', 'their community organization'),
         strengths=participant_data['strengths'],
         goals=participant_data['goals'],
-        myom_status=participant_data['myom_status'],
-        learning_impact=participant_data['learning_impact'],
         pronoun=pronoun,
-        pronoun_cap=pronoun_cap
+        pronoun_cap=pronoun_cap,
+        strengths_expanded="{strengths}",  # Will be filled by the model
+        strength_reference="{strength_reference}"  # Will be filled by the model
     )
 
     try:
@@ -213,13 +260,12 @@ def generate_certificate(participant_data, prompt_template=None, system_instruct
 def load_sample_data():
     """Load sample data for demonstration purposes."""
     return {
-        "name": "Thabo Mokoena",
-        "gender": "Male",
-        "completion_date": "15 March 2025",
-        "strengths": "Communication skills, adaptability, creative problem-solving",
-        "goals": "Start a small business selling handcrafted items, save money for further education",
-        "myom_status": "I have made money for myself before, but I don't do it all the time",
-        "learning_impact": "The program helped me understand how to price my products and manage my time between my job and side hustle"
+        "name": "Thando Vilakazi",
+        "gender": "Female",
+        "completion_date": "15 February 2025",
+        "organization": "South African Association of Youth Clubs (SAAYC)",
+        "strengths": "Performing arts, communication, creativity",
+        "goals": "To develop my skills while making my own money"
     }
 
 # Function to create download links
@@ -229,12 +275,11 @@ def get_download_link(certificate_text, name):
     b64 = base64.b64encode(certificate_text.encode()).decode()
     filename = f"certificate_{name.replace(' ', '_')}.txt"
     
-    # Format for different platforms
-    whatsapp_text = certificate_text.replace('\n', '%0A')  # Keep for compatibility
+    # Format for email
     email_subject = f"Certificate of Completion for {name}"
     email_body = certificate_text.replace('\n', '%0D%0A')
     
-    return filename, b64, whatsapp_text, email_subject, email_body
+    return filename, b64, email_subject, email_body
 
 # Function to add a copy to clipboard button that works with Streamlit
 def add_copy_button(certificate_text):
@@ -271,15 +316,13 @@ with tab1:
             st.session_state.name = sample["name"]
             st.session_state.gender = sample["gender"]
             st.session_state.completion_date = sample["completion_date"]
+            st.session_state.organization = sample["organization"]
             st.session_state.strengths = sample["strengths"]
             st.session_state.goals = sample["goals"]
-            st.session_state.myom_status = sample["myom_status"]
-            st.session_state.learning_impact_option = "Custom response"
-            st.session_state.custom_impact = sample["learning_impact"]
         
         # Name input
         name = st.text_input("Name", value=st.session_state.get("name", ""), 
-                            placeholder="e.g., Thabo Mokoena")
+                            placeholder="e.g., Thando Vilakazi")
         
         # Gender selection
         gender = st.selectbox("Gender", options=["Male", "Female", "Other"], 
@@ -288,50 +331,21 @@ with tab1:
         
         # Date input
         completion_date = st.text_input("Completion Date", value=st.session_state.get("completion_date", ""), 
-                                       placeholder="e.g., 15 March 2025")
+                                       placeholder="e.g., 15 February 2025")
+        
+        # Organization
+        organization = st.text_input("Organization", value=st.session_state.get("organization", ""), 
+                                   placeholder="e.g., South African Association of Youth Clubs (SAAYC)")
         
         # Strengths input
         strengths = st.text_area("Strengths", value=st.session_state.get("strengths", ""), 
-                               placeholder="e.g., Communication skills, adaptability, creative problem-solving", 
+                               placeholder="e.g., Performing arts, communication, creativity", 
                                height=80)
         
         # Goals input
         goals = st.text_area("Goals", value=st.session_state.get("goals", ""), 
-                           placeholder="e.g., Start a small business, save for education", 
+                           placeholder="e.g., To develop my skills while making my own money", 
                            height=80)
-        
-        # MYOM status
-        myom_status_options = [
-            "I've never thought about making money for myself – I just want a job or a chance to study",
-            "I've thought about making money for myself, but I've never actually done so",
-            "I have made money for myself before, but I don't do it all the time",
-            "I'm making money for myself, and I want to keep making money and grow my business"
-        ]
-        
-        myom_status = st.selectbox("MYOM Status", options=myom_status_options,
-                                  index=0 if not st.session_state.get("myom_status") else
-                                  myom_status_options.index(st.session_state.get("myom_status")))
-        
-        # Learning impact
-        learning_impact_options = [
-            "I learned a lot and am applying it daily",
-            "I learned some useful things that I'm starting to apply",
-            "I learned a few things that might be helpful",
-            "I didn't learn much that was useful to me",
-            "Custom response"
-        ]
-        
-        learning_impact_option = st.selectbox("Learning Impact", options=learning_impact_options,
-                                           index=0 if not st.session_state.get("learning_impact_option") else
-                                           learning_impact_options.index(st.session_state.get("learning_impact_option")))
-        
-        # Custom impact input (shown conditionally)
-        custom_impact = ""
-        if learning_impact_option == "Custom response":
-            custom_impact = st.text_area("Custom Learning Impact", 
-                                       value=st.session_state.get("custom_impact", ""),
-                                       placeholder="Enter custom learning impact here", 
-                                       height=80)
     
     with col2:
         st.subheader("API Authentication")
@@ -363,25 +377,18 @@ with tab1:
     
     # Certificate generation logic
     if generate_button and st.session_state.api_key_set:
-        if not name or not completion_date or not strengths or not goals:
-            st.error("Please fill in all required fields (Name, Date, Strengths, and Goals)")
+        if not name or not completion_date or not strengths:
+            st.error("Please fill in all required fields (Name, Date, and Strengths)")
         else:
             with st.spinner("Generating certificate..."):
-                # Determine the final learning impact text
-                if learning_impact_option == "Custom response":
-                    final_learning_impact = custom_impact
-                else:
-                    final_learning_impact = learning_impact_option
-                
                 # Create participant data
                 participant_data = {
                     "name": name,
                     "gender": gender,
                     "completion_date": completion_date,
+                    "organization": organization,
                     "strengths": strengths,
-                    "goals": goals,
-                    "myom_status": myom_status,
-                    "learning_impact": final_learning_impact
+                    "goals": goals
                 }
                 
                 # Generate certificate
@@ -395,11 +402,9 @@ with tab1:
                 st.session_state.name = name
                 st.session_state.gender = gender
                 st.session_state.completion_date = completion_date
+                st.session_state.organization = organization
                 st.session_state.strengths = strengths
                 st.session_state.goals = goals
-                st.session_state.myom_status = myom_status
-                st.session_state.learning_impact_option = learning_impact_option
-                st.session_state.custom_impact = custom_impact
                 
                 # Display certificate with better formatting and id for copy functionality
                 st.subheader("Generated Certificate")
@@ -408,9 +413,9 @@ with tab1:
                 st.markdown(f'<div class="certificate-container" id="certificate-text">{formatted_certificate}</div>', unsafe_allow_html=True)
                 
                 # Create download links
-                filename, b64, whatsapp_text, email_subject, email_body = get_download_link(certificate_text, name)
+                filename, b64, email_subject, email_body = get_download_link(certificate_text, name)
                 
-                # Add download and email buttons (WhatsApp removed as requested)
+                # Add download and email buttons
                 col1, col2 = st.columns(2)
                 with col1:
                     st.download_button(
@@ -449,9 +454,9 @@ with tab1:
                 
                 # Create download links
                 name = st.session_state.last_certificate_data['participant_data']['name']
-                filename, b64, whatsapp_text, email_subject, email_body = get_download_link(certificate_text, name)
+                filename, b64, email_subject, email_body = get_download_link(certificate_text, name)
                 
-                # Add download and email buttons (WhatsApp removed as requested)
+                # Add download and email buttons
                 col1, col2 = st.columns(2)
                 with col1:
                     st.download_button(
@@ -477,17 +482,17 @@ with tab2:
     
     # Template name
     template_name = st.text_input("Template Name", value=st.session_state.template_name, 
-                                placeholder="e.g., Business Focus")
+                                placeholder="e.g., MYOM Focus")
     
     # System instructions
     st.markdown("### System Instructions")
-    st.write("NOTE: For Gemini 2.0 we combine these with the prompt - they are not sent separately.")
+    st.write("These instructions guide the AI on how to create certificates.")
     system_instruction = st.text_area("System Instructions", value=st.session_state.system_instruction, 
                                     height=200)
     
     # Prompt template
     st.markdown("### Prompt Template")
-    st.write("This is the actual template that will be filled with participant data. Use {name}, {gender}, {completion_date}, etc. as placeholders.")
+    st.write("This is the template that will be filled with participant data. Use {name}, {gender}, etc. as placeholders.")
     prompt_template = st.text_area("Prompt Template", value=st.session_state.prompt_template, 
                                  height=300)
     
@@ -548,13 +553,12 @@ with tab2:
     st.markdown("""
     | Variable | Description | Example |
     | --- | --- | --- |
-    | {name} | Participant's full name | Thabo Mokoena |
+    | {name} | Participant's full name | Thando Vilakazi |
     | {gender} | Participant's gender | Male, Female, Other |
-    | {completion_date} | When they completed 30 check-ins | 15 March 2025 |
-    | {strengths} | Participant's self-identified strengths | Communication skills, adaptability |
-    | {goals} | Participant's personal/professional goals | Start a small business selling crafts |
-    | {myom_status} | Current relationship with self-employment | I have made money for myself before |
-    | {learning_impact} | Self-reported impact of the program | I learned how to price my products |
+    | {completion_date} | When they completed program | 15 February 2025 |
+    | {organization} | Organization they're with | South African Association of Youth Clubs |
+    | {strengths} | Participant's self-identified strengths | Performing arts, communication |
+    | {goals} | Participant's personal/professional goals | To develop skills while making money |
     | {pronoun} | Appropriate pronoun based on gender | he, she, they |
     | {pronoun_cap} | Capitalized pronoun | He, She, They |
     """)
@@ -577,7 +581,7 @@ with tab3:
             field_names = reader.fieldnames
             
             # Check for required fields
-            required_fields = ['name', 'gender', 'completion_date', 'strengths', 'goals', 'myom_status', 'learning_impact']
+            required_fields = ['name', 'gender', 'completion_date', 'organization', 'strengths', 'goals']
             missing_fields = [field for field in required_fields if field not in field_names]
             
             if missing_fields:
@@ -668,9 +672,9 @@ with tab3:
     
     # Show CSV format example
     st.subheader("CSV Format Example:")
-    csv_example = """name,gender,completion_date,strengths,goals,myom_status,learning_impact
-Thabo Mokoena,Male,15 March 2025,"Communication skills, adaptability, creative problem-solving","Start a small business selling handcrafted items, save money for further education","I have made money for myself before, but I don't do it all the time","The program helped me understand how to price my products and manage my time between my job and side hustle"
-Nomsa Dlamini,Female,16 March 2025,"Organization, attention to detail, team coordination","Find employment in administration, start a small catering business on weekends","I've thought about making money for myself, but I've never actually done so","I learned some useful things that I'm starting to apply"
+    csv_example = """name,gender,completion_date,organization,strengths,goals
+Thando Vilakazi,Female,15 February 2025,"South African Association of Youth Clubs (SAAYC)","Performing arts, communication, creativity","To develop my skills while making my own money"
+Sipho Ndlovu,Male,16 February 2025,"Cricket South Africa","Leadership, teamwork, problem-solving","Start a community coaching program"
 """
     
     st.code(csv_example, language="text")
@@ -678,6 +682,6 @@ Nomsa Dlamini,Female,16 March 2025,"Organization, attention to detail, team coor
 # Footer
 st.markdown("""
 <div class="footer">
-    <p>CoachMee Certificate Generator v1.0 | Harambee Youth Employment Accelerator | © 2025</p>
+    <p>CoachMee Certificate Generator v2.0 | Harambee Youth Employment Accelerator | © 2025</p>
 </div>
 """, unsafe_allow_html=True)
