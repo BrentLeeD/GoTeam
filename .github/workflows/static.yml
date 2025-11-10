@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TESTING: CSF CALL OPENING - ONEVIEW PHASE 2</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .container {
+            display: flex;
+            height: calc(100vh - 80px);
+        }
+
+        .selection-panel {
+            width: 350px;
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-right: 2px solid #dee2e6;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .selection-panel h2 {
+            font-size: 20px;
+            margin-bottom: 30px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .option-group {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .option-button {
+            padding: 20px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            border: 2px solid #3498db;
+            background-color: white;
+            color: #3498db;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .option-button:hover {
+            background-color: #3498db;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .option-button.selected {
+            background-color: #2ecc71;
+            border-color: #2ecc71;
+            color: white;
+        }
+
+        .option-button.selected:hover {
+            background-color: #27ae60;
+            border-color: #27ae60;
+        }
+
+        .typeform-panel {
+            flex: 1;
+            position: relative;
+            background-color: #ecf0f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .placeholder {
+            text-align: center;
+            color: #7f8c8d;
+        }
+
+        .placeholder-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .placeholder h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #34495e;
+        }
+
+        .placeholder p {
+            font-size: 16px;
+        }
+
+        #typeform-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+        }
+
+        #typeform-iframe.loaded {
+            display: block;
+        }
+
+        .selected-indicator {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 6px;
+            color: #155724;
+            text-align: center;
+            font-weight: 500;
+            display: none;
+        }
+
+        .selected-indicator.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .selection-panel {
+                width: 100%;
+                padding: 20px;
+                border-right: none;
+                border-bottom: 2px solid #dee2e6;
+            }
+
+            .header h1 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>TESTING: CSF CALL OPENING - ONEVIEW PHASE 2</h1>
+    </div>
+
+    <div class="container">
+        <div class="selection-panel">
+            <h2>Select Call Direction</h2>
+            <div class="option-group">
+                <button class="option-button" data-direction="INBOUND" onclick="selectDirection('INBOUND')">
+                    Inbound
+                </button>
+                <button class="option-button" data-direction="OUTBOUND" onclick="selectDirection('OUTBOUND')">
+                    Outbound
+                </button>
+            </div>
+            <div class="selected-indicator" id="selectedIndicator">
+                <span id="selectedText"></span>
+            </div>
+        </div>
+
+        <div class="typeform-panel">
+            <div class="placeholder" id="placeholder">
+                <div class="placeholder-icon">📋</div>
+                <h3>Ready to Test</h3>
+                <p>Please select a call direction to load the TypeForm</p>
+            </div>
+            <iframe id="typeform-iframe"></iframe>
+        </div>
+    </div>
+
+    <script>
+        let selectedCallDirection = null;
+
+        function selectDirection(direction) {
+            selectedCallDirection = direction;
+
+            // Update button states
+            const buttons = document.querySelectorAll('.option-button');
+            buttons.forEach(button => {
+                if (button.dataset.direction === direction) {
+                    button.classList.add('selected');
+                } else {
+                    button.classList.remove('selected');
+                }
+            });
+
+            // Show selected indicator
+            const indicator = document.getElementById('selectedIndicator');
+            const selectedText = document.getElementById('selectedText');
+            selectedText.textContent = `Selected: ${direction}`;
+            indicator.classList.add('show');
+
+            // Load TypeForm
+            loadTypeForm(direction);
+        }
+
+        function loadTypeForm(callDirection) {
+            const iframe = document.getElementById('typeform-iframe');
+            const placeholder = document.getElementById('placeholder');
+            
+            // Build the TypeForm URL with all parameters
+            const baseUrl = 'https://hrmb.typeform.com/to/dgG6Q4sC';
+            const params = new URLSearchParams({
+                agent_name: 'Lexi',
+                workseeker_name: 'testWorkseeker',
+                call_direction: callDirection
+            });
+            
+            const fullUrl = `${baseUrl}?${params.toString()}`;
+            
+            // Set the iframe source
+            iframe.src = fullUrl;
+            
+            // Hide placeholder and show iframe
+            placeholder.style.display = 'none';
+            iframe.classList.add('loaded');
+        }
+    </script>
+</body>
+</html>
